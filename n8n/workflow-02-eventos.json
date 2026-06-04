@@ -1,0 +1,159 @@
+{
+  "name": "Aulai 02 — Eventos (distribuição + WhatsApp)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "aulai-eventos",
+        "responseMode": "onReceived",
+        "options": { "rawBody": true }
+      },
+      "id": "webhook",
+      "name": "Webhook Eventos",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-40, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "1", "name": "AULAI_URL", "value": "https://aulai.seu-dominio.com", "type": "string" },
+            { "id": "2", "name": "ZAPI_BASE", "value": "https://api.z-api.io/instances/INSTANCE/token/TOKEN", "type": "string" },
+            { "id": "3", "name": "OWNER_PHONE", "value": "5511999999999", "type": "string" },
+            { "id": "4", "name": "WEBHOOK_SECRET", "value": "SEU_OUTBOUND_WEBHOOK_SECRET", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "config",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [180, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst raw = $('Webhook Eventos').item.json.body ? JSON.stringify($('Webhook Eventos').item.json.body) : '';\nconst sig = $('Webhook Eventos').item.json.headers['x-signature'];\nconst secret = $('Config').first().json.WEBHOOK_SECRET;\nconst expected = crypto.createHmac('sha256', secret).update($('Webhook Eventos').first().json.rawBody || raw).digest('hex');\nif (sig !== expected) { throw new Error('HMAC inválido'); }\nreturn [{ json: $('Webhook Eventos').item.json.body }];"
+      },
+      "id": "verify-hmac",
+      "name": "Verifica HMAC",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 300],
+      "notes": "Confere x-signature = HMAC-SHA256(rawBody, OUTBOUND_WEBHOOK_SECRET)."
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            { "conditions": { "options": { "version": 2 }, "conditions": [{ "leftValue": "={{ $json.event }}", "rightValue": "course.approved", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "outputKey": "approved" },
+            { "conditions": { "options": { "version": 2 }, "conditions": [{ "leftValue": "={{ $json.event }}", "rightValue": "course.changes_requested", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "outputKey": "changes" },
+            { "conditions": { "options": { "version": 2 }, "conditions": [{ "leftValue": "={{ $json.event }}", "rightValue": "course.scheduled", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "outputKey": "scheduled" },
+            { "conditions": { "options": { "version": 2 }, "conditions": [{ "leftValue": "={{ $json.event }}", "rightValue": "course.published", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "outputKey": "published" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch",
+      "name": "Switch Evento",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [620, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.ZAPI_BASE }}/send-text",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ phone: $('Config').item.json.OWNER_PHONE, message: '✅ Curso aprovado: ' + $json.data.title }) }}",
+        "options": {}
+      },
+      "id": "wa-approved",
+      "name": "WA Aprovado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 80],
+      "notes": "Credencial: Client-Token = ZAPI_CLIENT_TOKEN"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.ZAPI_BASE }}/send-text",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ phone: $('Config').item.json.OWNER_PHONE, message: '✏️ Ajuste pedido em: ' + $json.data.title + '\\n' + ($json.data.comment || '') }) }}",
+        "options": {}
+      },
+      "id": "wa-changes",
+      "name": "WA Ajuste",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 240]
+    },
+    {
+      "parameters": {
+        "dateTime": "={{ $json.data.scheduledFor }}",
+        "options": {}
+      },
+      "id": "wait-schedule",
+      "name": "Aguarda Agendamento",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [880, 400],
+      "notes": "Espera até scheduledFor."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.AULAI_URL }}/api/courses/{{ $json.data.id }}/publish",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "publica",
+      "name": "Aulai Publica",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 400],
+      "notes": "Credencial: x-api-key = SERVICE_API_KEY. Dispara publicação no ClassOS."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.ZAPI_BASE }}/send-text",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ phone: $('Config').item.json.OWNER_PHONE, message: '🚀 Curso publicado no ClassOS: ' + $json.data.title }) }}",
+        "options": {}
+      },
+      "id": "wa-published",
+      "name": "WA Publicado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 560]
+    }
+  ],
+  "connections": {
+    "Webhook Eventos": { "main": [[{ "node": "Config", "type": "main", "index": 0 }]] },
+    "Config": { "main": [[{ "node": "Verifica HMAC", "type": "main", "index": 0 }]] },
+    "Verifica HMAC": { "main": [[{ "node": "Switch Evento", "type": "main", "index": 0 }]] },
+    "Switch Evento": {
+      "main": [
+        [{ "node": "WA Aprovado", "type": "main", "index": 0 }],
+        [{ "node": "WA Ajuste", "type": "main", "index": 0 }],
+        [{ "node": "Aguarda Agendamento", "type": "main", "index": 0 }],
+        [{ "node": "WA Publicado", "type": "main", "index": 0 }]
+      ]
+    },
+    "Aguarda Agendamento": { "main": [[{ "node": "Aulai Publica", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

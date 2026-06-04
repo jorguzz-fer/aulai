@@ -1,0 +1,152 @@
+{
+  "name": "Aulai 00 — WhatsApp Intake (Z-API)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "aulai-intake",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-zapi",
+      "name": "Z-API Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-40, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "1", "name": "AULAI_URL", "value": "https://aulai.seu-dominio.com", "type": "string" },
+            { "id": "2", "name": "AUTHORIZED_PHONE", "value": "5511999999999", "type": "string" },
+            { "id": "3", "name": "ZAPI_BASE", "value": "https://api.z-api.io/instances/INSTANCE/token/TOKEN", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "config",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [180, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "version": 2 },
+          "conditions": [
+            { "id": "c1", "leftValue": "={{ $('Z-API Webhook').item.json.body.fromMe }}", "rightValue": false, "operator": { "type": "boolean", "operation": "equals" } },
+            { "id": "c2", "leftValue": "={{ $('Z-API Webhook').item.json.body.isGroup }}", "rightValue": false, "operator": { "type": "boolean", "operation": "equals" } },
+            { "id": "c3", "leftValue": "={{ $('Z-API Webhook').item.json.body.phone }}", "rightValue": "={{ $json.AUTHORIZED_PHONE }}", "operator": { "type": "string", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter",
+      "name": "Filtra Remetente",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "anthropic-version", "value": "2023-06-01" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-opus-4-7', max_tokens: 1024, system: 'Você interpreta pedidos de criação de curso. Extraia do texto do usuário um JSON com: title (string), audience (string), lessonCount (number, padrão 10), tone (string). Responda APENAS com JSON válido, sem markdown.', messages: [{ role: 'user', content: $('Z-API Webhook').item.json.body.text.message }] }) }}",
+        "options": {}
+      },
+      "id": "claude-interpreta",
+      "name": "Claude Interpreta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [620, 220],
+      "notes": "Credencial Header Auth: Name = x-api-key, Value = ANTHROPIC_API_KEY"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "1", "name": "brief", "value": "={{ JSON.parse($json.content[0].text) }}", "type": "object" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extrai-brief",
+      "name": "Extrai Brief",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [840, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.AULAI_URL }}/api/courses",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: $json.brief.title }) }}",
+        "options": {}
+      },
+      "id": "cria-curso",
+      "name": "Aulai Cria Curso",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1060, 220],
+      "notes": "Credencial Header Auth: Name = x-api-key, Value = SERVICE_API_KEY"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.seu-dominio.com/webhook/aulai-producao",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ courseId: $json.course.id, brief: $('Extrai Brief').item.json.brief }) }}",
+        "options": {}
+      },
+      "id": "dispara-producao",
+      "name": "Dispara Produção",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1280, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.ZAPI_BASE }}/send-text",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ phone: $('Z-API Webhook').item.json.body.phone, message: '✅ Recebido! Estou gerando o curso \"' + $('Extrai Brief').item.json.brief.title + '\". Te aviso quando estiver pronto para aprovação.' }) }}",
+        "options": {}
+      },
+      "id": "wa-confirma",
+      "name": "WA Confirma",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1500, 220],
+      "notes": "Credencial Header Auth: Name = Client-Token, Value = ZAPI_CLIENT_TOKEN"
+    }
+  ],
+  "connections": {
+    "Z-API Webhook": { "main": [[{ "node": "Config", "type": "main", "index": 0 }]] },
+    "Config": { "main": [[{ "node": "Filtra Remetente", "type": "main", "index": 0 }]] },
+    "Filtra Remetente": { "main": [[{ "node": "Claude Interpreta", "type": "main", "index": 0 }], []] },
+    "Claude Interpreta": { "main": [[{ "node": "Extrai Brief", "type": "main", "index": 0 }]] },
+    "Extrai Brief": { "main": [[{ "node": "Aulai Cria Curso", "type": "main", "index": 0 }]] },
+    "Aulai Cria Curso": { "main": [[{ "node": "Dispara Produção", "type": "main", "index": 0 }]] },
+    "Dispara Produção": { "main": [[{ "node": "WA Confirma", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

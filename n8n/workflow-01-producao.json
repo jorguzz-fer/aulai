@@ -1,0 +1,253 @@
+{
+  "name": "Aulai 01 — Produção (Claude + HeyGen + Canva)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "aulai-producao",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook Produção",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-60, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "1", "name": "AULAI_URL", "value": "https://aulai.seu-dominio.com", "type": "string" },
+            { "id": "2", "name": "courseId", "value": "={{ $json.body.courseId }}", "type": "string" },
+            { "id": "3", "name": "brief", "value": "={{ $json.body.brief }}", "type": "object" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "config",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [160, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "anthropic-version", "value": "2023-06-01" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-opus-4-7', max_tokens: 8000, system: $('Config').first().json.SYSTEM_PROMPT || 'Você é um designer instrucional. Gere um curso completo em JSON. CONFORMIDADE CFM 2.336/2023: identificação obrigatória (nome, CRM+UF, RQE, máx 2 especialidades), proibido prometer resultado ou sensacionalismo, anonimato de pacientes, equipamentos só conforme ANVISA. Formato de saída EXATO (apenas JSON, sem markdown): {\"subtitle\":\"...\",\"audience\":\"...\",\"promise\":\"...\",\"prerequisite\":\"...\",\"expectedResult\":\"...\",\"format\":\"...\",\"complianceNotes\":\"...\",\"modules\":[{\"order\":0,\"title\":\"...\",\"description\":\"...\",\"supportMaterials\":\"...\",\"links\":[{\"label\":\"...\",\"url\":\"...\"}],\"lessons\":[{\"order\":0,\"title\":\"...\",\"durationMinutes\":15,\"objective\":\"...\",\"script\":\"roteiro temporizado\",\"exercise\":\"...\"}]}]}', messages: [{ role: 'user', content: 'Crie o curso completo. Briefing: ' + JSON.stringify($('Config').item.json.brief) }] }) }}",
+        "options": {}
+      },
+      "id": "claude-curriculo",
+      "name": "Claude Gera Currículo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [380, 300],
+      "notes": "system prompt = persona pedagógica + regras CFM. Credencial: x-api-key = ANTHROPIC_API_KEY"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "1", "name": "curriculo", "value": "={{ JSON.parse($json.content[0].text) }}", "type": "object" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extrai",
+      "name": "Extrai Currículo",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Config').item.json.AULAI_URL }}/api/courses/{{ $('Config').item.json.courseId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ subtitle: $json.curriculo.subtitle, audience: $json.curriculo.audience, promise: $json.curriculo.promise, prerequisite: $json.curriculo.prerequisite, expectedResult: $json.curriculo.expectedResult, format: $json.curriculo.format, complianceNotes: $json.curriculo.complianceNotes }) }}",
+        "options": {}
+      },
+      "id": "salva-meta",
+      "name": "Aulai Salva Metadados",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [820, 300],
+      "notes": "Credencial: x-api-key = SERVICE_API_KEY"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.AULAI_URL }}/api/courses/{{ $('Config').item.json.courseId }}/curriculum",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ modules: $('Extrai Currículo').item.json.curriculo.modules }) }}",
+        "options": {}
+      },
+      "id": "salva-curriculo",
+      "name": "Aulai Salva Currículo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1040, 300],
+      "notes": "Salva módulos + aulas. Curso vai p/ EM_PRODUCAO. Resposta traz lessons com ids."
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "course.modules",
+        "options": {}
+      },
+      "id": "split-modules",
+      "name": "Split Módulos",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [1260, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "lessons",
+        "options": {}
+      },
+      "id": "split-lessons",
+      "name": "Split Aulas",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [1480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.heygen.com/v2/video/generate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ video_inputs: [{ character: { type: 'avatar', avatar_id: 'SEU_AVATAR_ID' }, voice: { type: 'text', input_text: $json.script || $json.title, voice_id: 'SEU_VOICE_ID' } }], dimension: { width: 1280, height: 720 } }) }}",
+        "options": {}
+      },
+      "id": "heygen-submete",
+      "name": "HeyGen Submete",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1700, 300],
+      "notes": "Use dimension (NÃO aspect_ratio). 1280x720 landscape p/ aula; 720x1280 p/ shorts. Credencial: X-Api-Key = HEYGEN_API_KEY"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Config').item.json.AULAI_URL }}/api/courses/{{ $('Config').item.json.courseId }}/lessons/{{ $('Split Aulas').item.json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ heygenRef: $json.data.video_id, videoStatus: 'RENDERING' }) }}",
+        "options": {}
+      },
+      "id": "marca-rendering",
+      "name": "Aulai Marca Rendering",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1920, 300],
+      "notes": "Guarda heygenRef p/ polling. (Opcional: gerar arte no Canva e setar thumbnailUrl aqui)"
+    },
+    {
+      "parameters": { "amount": 5, "unit": "minutes" },
+      "id": "wait",
+      "name": "Aguarda 5min",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2140, 300],
+      "notes": "Sempre setar unit E amount."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.heygen.com/v1/video_status.get?video_id={{ $('Aulai Marca Rendering').item.json.lesson.heygenRef }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "heygen-status",
+      "name": "HeyGen Verifica Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2360, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "version": 2 },
+          "conditions": [
+            { "id": "c1", "leftValue": "={{ $json.data.status }}", "rightValue": "completed", "operator": { "type": "string", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-pronto",
+      "name": "IF Pronto",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2580, 300]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Config').item.json.AULAI_URL }}/api/courses/{{ $('Config').item.json.courseId }}/lessons/{{ $('Split Aulas').item.json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ videoUrl: $json.data.video_url, videoStatus: 'READY' }) }}",
+        "options": {}
+      },
+      "id": "marca-ready",
+      "name": "Aulai Marca Vídeo Pronto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2800, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.AULAI_URL }}/api/courses/{{ $('Config').item.json.courseId }}/ready",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "curso-pronto",
+      "name": "Aulai Curso Pronto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3020, 200],
+      "notes": "Chamar quando TODAS as aulas estiverem READY (ex.: após o último item do batch). Move curso p/ AGUARDANDO_APROVACAO."
+    }
+  ],
+  "connections": {
+    "Webhook Produção": { "main": [[{ "node": "Config", "type": "main", "index": 0 }]] },
+    "Config": { "main": [[{ "node": "Claude Gera Currículo", "type": "main", "index": 0 }]] },
+    "Claude Gera Currículo": { "main": [[{ "node": "Extrai Currículo", "type": "main", "index": 0 }]] },
+    "Extrai Currículo": { "main": [[{ "node": "Aulai Salva Metadados", "type": "main", "index": 0 }]] },
+    "Aulai Salva Metadados": { "main": [[{ "node": "Aulai Salva Currículo", "type": "main", "index": 0 }]] },
+    "Aulai Salva Currículo": { "main": [[{ "node": "Split Módulos", "type": "main", "index": 0 }]] },
+    "Split Módulos": { "main": [[{ "node": "Split Aulas", "type": "main", "index": 0 }]] },
+    "Split Aulas": { "main": [[{ "node": "HeyGen Submete", "type": "main", "index": 0 }]] },
+    "HeyGen Submete": { "main": [[{ "node": "Aulai Marca Rendering", "type": "main", "index": 0 }]] },
+    "Aulai Marca Rendering": { "main": [[{ "node": "Aguarda 5min", "type": "main", "index": 0 }]] },
+    "Aguarda 5min": { "main": [[{ "node": "HeyGen Verifica Status", "type": "main", "index": 0 }]] },
+    "HeyGen Verifica Status": { "main": [[{ "node": "IF Pronto", "type": "main", "index": 0 }]] },
+    "IF Pronto": { "main": [[{ "node": "Aulai Marca Vídeo Pronto", "type": "main", "index": 0 }], [{ "node": "Aguarda 5min", "type": "main", "index": 0 }]] },
+    "Aulai Marca Vídeo Pronto": { "main": [[{ "node": "Aulai Curso Pronto", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}
