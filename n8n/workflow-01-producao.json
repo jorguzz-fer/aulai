@@ -99,9 +99,28 @@
 
     {
       "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "version": 2 },
+          "conditions": [
+            { "id": "a", "leftValue": "={{ $('Config').item.json.BRAND_TEMPLATE_ID }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } },
+            { "id": "b", "leftValue": "={{ $('Config').item.json.BRAND_TEMPLATE_ID }}", "rightValue": "SEU_BRAND_TEMPLATE_ID", "operator": { "type": "string", "operation": "notEquals" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-canva-curso",
+      "name": "Tem Canva? (curso)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1240, 120],
+      "notes": "Capas Canva são opcionais: só rodam se BRAND_TEMPLATE_ID estiver configurado."
+    },
+    {
+      "parameters": {
         "assignments": {
           "assignments": [
-            { "id": "1", "name": "text", "value": "={{ $json.course.title }}", "type": "string" },
+            { "id": "1", "name": "text", "value": "={{ $('Aulai Salva Currículo').item.json.course.title }}", "type": "string" },
             { "id": "2", "name": "brandTemplateId", "value": "={{ $('Config').item.json.BRAND_TEMPLATE_ID }}", "type": "string" }
           ]
         },
@@ -111,7 +130,7 @@
       "name": "Capa Curso (input)",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [1240, 200]
+      "position": [1460, 120]
     },
     {
       "parameters": { "source": "database", "workflowId": "REPLACE_COM_ID_DO_WORKFLOW_03", "options": {} },
@@ -150,9 +169,27 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "version": 2 },
+          "conditions": [
+            { "id": "a", "leftValue": "={{ $('Config').item.json.BRAND_TEMPLATE_ID }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } },
+            { "id": "b", "leftValue": "={{ $('Config').item.json.BRAND_TEMPLATE_ID }}", "rightValue": "SEU_BRAND_TEMPLATE_ID", "operator": { "type": "string", "operation": "notEquals" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-canva-mod",
+      "name": "Tem Canva? (módulo)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1460, 300]
+    },
+    {
+      "parameters": {
         "assignments": {
           "assignments": [
-            { "id": "1", "name": "text", "value": "={{ $json.title }}", "type": "string" },
+            { "id": "1", "name": "text", "value": "={{ $('Split Módulos').item.json.title }}", "type": "string" },
             { "id": "2", "name": "brandTemplateId", "value": "={{ $('Config').item.json.BRAND_TEMPLATE_ID }}", "type": "string" }
           ]
         },
@@ -162,7 +199,7 @@
       "name": "Capa Módulo (input)",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [1460, 380]
+      "position": [1680, 300]
     },
     {
       "parameters": { "source": "database", "workflowId": "REPLACE_COM_ID_DO_WORKFLOW_03", "options": {} },
@@ -243,18 +280,20 @@
     "Aulai Salva Metadados": { "main": [[{ "node": "Aulai Salva Currículo", "type": "main", "index": 0 }]] },
     "Aulai Salva Currículo": {
       "main": [[
-        { "node": "Capa Curso (input)", "type": "main", "index": 0 },
+        { "node": "Tem Canva? (curso)", "type": "main", "index": 0 },
         { "node": "Split Módulos", "type": "main", "index": 0 }
       ]]
     },
+    "Tem Canva? (curso)": { "main": [[{ "node": "Capa Curso (input)", "type": "main", "index": 0 }], []] },
     "Capa Curso (input)": { "main": [[{ "node": "Canva Cover (curso)", "type": "main", "index": 0 }]] },
     "Canva Cover (curso)": { "main": [[{ "node": "Aulai Capa Curso", "type": "main", "index": 0 }]] },
     "Split Módulos": {
       "main": [[
-        { "node": "Capa Módulo (input)", "type": "main", "index": 0 },
+        { "node": "Tem Canva? (módulo)", "type": "main", "index": 0 },
         { "node": "Split Aulas", "type": "main", "index": 0 }
       ]]
     },
+    "Tem Canva? (módulo)": { "main": [[{ "node": "Capa Módulo (input)", "type": "main", "index": 0 }], []] },
     "Capa Módulo (input)": { "main": [[{ "node": "Canva Cover (módulo)", "type": "main", "index": 0 }]] },
     "Canva Cover (módulo)": { "main": [[{ "node": "Aulai Capa Módulo", "type": "main", "index": 0 }]] },
     "Split Aulas": { "main": [[{ "node": "HeyGen Submete", "type": "main", "index": 0 }]] },

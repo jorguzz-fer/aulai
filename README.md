@@ -66,8 +66,9 @@ Importe os 3 workflows de `n8n/`. Configure **Credentials** (Header Auth) para A
 e o **Set "Config"** com URLs/telefones. No plano free não use `$env.*`.
 
 - **00 Intake:** WhatsApp → filtra → Claude interpreta brief → cria curso → dispara Produção.
-- **01 Produção:** Claude gera currículo → salva → Canva gera capas (curso/módulo) → HeyGen
-  submete um vídeo por aula (com `callback_id`) e **encerra**. Sem polling.
+- **01 Produção:** Claude gera currículo → salva → **(opcional)** Canva gera capas (curso/módulo,
+  só se `BRAND_TEMPLATE_ID` estiver configurado) → HeyGen submete um vídeo por aula (com
+  `callback_id`) e **encerra**. Sem polling.
 - **02 Eventos:** verifica HMAC → switch → WhatsApp / publica no ClassOS.
 - **03 Canva Cover:** sub-workflow reutilizável (autofill → export → retorna URL da capa).
 
