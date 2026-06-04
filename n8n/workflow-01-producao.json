@@ -1,18 +1,13 @@
 {
-  "name": "Aulai 01 — Produção (Claude + HeyGen + Canva)",
+  "name": "Aulai 01 — Produção (Claude + Canva + HeyGen webhook)",
   "nodes": [
     {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "aulai-producao",
-        "responseMode": "onReceived",
-        "options": {}
-      },
+      "parameters": { "httpMethod": "POST", "path": "aulai-producao", "responseMode": "onReceived", "options": {} },
       "id": "webhook",
       "name": "Webhook Produção",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-60, 300]
+      "position": [-80, 380]
     },
     {
       "parameters": {
@@ -20,7 +15,10 @@
           "assignments": [
             { "id": "1", "name": "AULAI_URL", "value": "https://aulai.seu-dominio.com", "type": "string" },
             { "id": "2", "name": "courseId", "value": "={{ $json.body.courseId }}", "type": "string" },
-            { "id": "3", "name": "brief", "value": "={{ $json.body.brief }}", "type": "object" }
+            { "id": "3", "name": "brief", "value": "={{ $json.body.brief }}", "type": "object" },
+            { "id": "4", "name": "BRAND_TEMPLATE_ID", "value": "SEU_BRAND_TEMPLATE_ID", "type": "string" },
+            { "id": "5", "name": "HEYGEN_AVATAR_ID", "value": "SEU_AVATAR_ID", "type": "string" },
+            { "id": "6", "name": "HEYGEN_VOICE_ID", "value": "SEU_VOICE_ID", "type": "string" }
           ]
         },
         "options": {}
@@ -29,7 +27,7 @@
       "name": "Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [160, 300]
+      "position": [140, 380]
     },
     {
       "parameters": {
@@ -41,30 +39,26 @@
         "headerParameters": { "parameters": [{ "name": "anthropic-version", "value": "2023-06-01" }] },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ model: 'claude-opus-4-7', max_tokens: 8000, system: $('Config').first().json.SYSTEM_PROMPT || 'Você é um designer instrucional. Gere um curso completo em JSON. CONFORMIDADE CFM 2.336/2023: identificação obrigatória (nome, CRM+UF, RQE, máx 2 especialidades), proibido prometer resultado ou sensacionalismo, anonimato de pacientes, equipamentos só conforme ANVISA. Formato de saída EXATO (apenas JSON, sem markdown): {\"subtitle\":\"...\",\"audience\":\"...\",\"promise\":\"...\",\"prerequisite\":\"...\",\"expectedResult\":\"...\",\"format\":\"...\",\"complianceNotes\":\"...\",\"modules\":[{\"order\":0,\"title\":\"...\",\"description\":\"...\",\"supportMaterials\":\"...\",\"links\":[{\"label\":\"...\",\"url\":\"...\"}],\"lessons\":[{\"order\":0,\"title\":\"...\",\"durationMinutes\":15,\"objective\":\"...\",\"script\":\"roteiro temporizado\",\"exercise\":\"...\"}]}]}', messages: [{ role: 'user', content: 'Crie o curso completo. Briefing: ' + JSON.stringify($('Config').item.json.brief) }] }) }}",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-opus-4-7', max_tokens: 8000, system: 'Você é um designer instrucional. Gere um curso completo em JSON. CONFORMIDADE CFM 2.336/2023: identificação obrigatória (nome, CRM+UF, RQE, máx 2 especialidades), proibido prometer resultado ou sensacionalismo, anonimato de pacientes, equipamentos só conforme ANVISA. Saída APENAS JSON: {\"subtitle\":\"\",\"audience\":\"\",\"promise\":\"\",\"prerequisite\":\"\",\"expectedResult\":\"\",\"format\":\"\",\"complianceNotes\":\"\",\"modules\":[{\"order\":0,\"title\":\"\",\"description\":\"\",\"supportMaterials\":\"\",\"links\":[{\"label\":\"\",\"url\":\"\"}],\"lessons\":[{\"order\":0,\"title\":\"\",\"durationMinutes\":15,\"objective\":\"\",\"script\":\"roteiro temporizado\",\"exercise\":\"\"}]}]}', messages: [{ role: 'user', content: 'Crie o curso completo. Briefing: ' + JSON.stringify($('Config').item.json.brief) }] }) }}",
         "options": {}
       },
-      "id": "claude-curriculo",
+      "id": "claude",
       "name": "Claude Gera Currículo",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [380, 300],
-      "notes": "system prompt = persona pedagógica + regras CFM. Credencial: x-api-key = ANTHROPIC_API_KEY"
+      "position": [360, 380],
+      "notes": "Credencial: x-api-key = ANTHROPIC_API_KEY"
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            { "id": "1", "name": "curriculo", "value": "={{ JSON.parse($json.content[0].text) }}", "type": "object" }
-          ]
-        },
+        "assignments": { "assignments": [{ "id": "1", "name": "curriculo", "value": "={{ JSON.parse($json.content[0].text) }}", "type": "object" }] },
         "options": {}
       },
       "id": "extrai",
       "name": "Extrai Currículo",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [600, 300]
+      "position": [580, 380]
     },
     {
       "parameters": {
@@ -81,7 +75,7 @@
       "name": "Aulai Salva Metadados",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [820, 300],
+      "position": [800, 380],
       "notes": "Credencial: x-api-key = SERVICE_API_KEY"
     },
     {
@@ -99,30 +93,110 @@
       "name": "Aulai Salva Currículo",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1040, 300],
-      "notes": "Salva módulos + aulas. Curso vai p/ EM_PRODUCAO. Resposta traz lessons com ids."
+      "position": [1020, 380],
+      "notes": "Resposta traz course.modules[].lessons[] com ids."
+    },
+
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "1", "name": "text", "value": "={{ $json.course.title }}", "type": "string" },
+            { "id": "2", "name": "brandTemplateId", "value": "={{ $('Config').item.json.BRAND_TEMPLATE_ID }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cover-curso-in",
+      "name": "Capa Curso (input)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1240, 200]
+    },
+    {
+      "parameters": { "source": "database", "workflowId": "REPLACE_COM_ID_DO_WORKFLOW_03", "options": {} },
+      "id": "cover-curso",
+      "name": "Canva Cover (curso)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1460, 200],
+      "notes": "Aponte para o workflow 03 (Canva Cover) após importar."
     },
     {
       "parameters": {
-        "fieldToSplitOut": "course.modules",
+        "method": "PATCH",
+        "url": "={{ $('Config').item.json.AULAI_URL }}/api/courses/{{ $('Config').item.json.courseId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ thumbnailUrl: $json.url }) }}",
         "options": {}
       },
-      "id": "split-modules",
+      "id": "patch-curso-thumb",
+      "name": "Aulai Capa Curso",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1680, 200]
+    },
+
+    {
+      "parameters": { "fieldToSplitOut": "course.modules", "options": {} },
+      "id": "split-modulos",
       "name": "Split Módulos",
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
-      "position": [1260, 300]
+      "position": [1240, 480]
     },
     {
       "parameters": {
-        "fieldToSplitOut": "lessons",
+        "assignments": {
+          "assignments": [
+            { "id": "1", "name": "text", "value": "={{ $json.title }}", "type": "string" },
+            { "id": "2", "name": "brandTemplateId", "value": "={{ $('Config').item.json.BRAND_TEMPLATE_ID }}", "type": "string" }
+          ]
+        },
         "options": {}
       },
-      "id": "split-lessons",
+      "id": "cover-mod-in",
+      "name": "Capa Módulo (input)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1460, 380]
+    },
+    {
+      "parameters": { "source": "database", "workflowId": "REPLACE_COM_ID_DO_WORKFLOW_03", "options": {} },
+      "id": "cover-mod",
+      "name": "Canva Cover (módulo)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1680, 380]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Config').item.json.AULAI_URL }}/api/courses/{{ $('Config').item.json.courseId }}/modules/{{ $('Split Módulos').item.json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ thumbnailUrl: $json.url }) }}",
+        "options": {}
+      },
+      "id": "patch-mod-thumb",
+      "name": "Aulai Capa Módulo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1900, 380]
+    },
+
+    {
+      "parameters": { "fieldToSplitOut": "lessons", "options": {} },
+      "id": "split-aulas",
       "name": "Split Aulas",
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
-      "position": [1480, 300]
+      "position": [1460, 620]
     },
     {
       "parameters": {
@@ -132,15 +206,15 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ video_inputs: [{ character: { type: 'avatar', avatar_id: 'SEU_AVATAR_ID' }, voice: { type: 'text', input_text: $json.script || $json.title, voice_id: 'SEU_VOICE_ID' } }], dimension: { width: 1280, height: 720 } }) }}",
+        "jsonBody": "={{ JSON.stringify({ callback_id: $json.id, video_inputs: [{ character: { type: 'avatar', avatar_id: $('Config').item.json.HEYGEN_AVATAR_ID }, voice: { type: 'text', input_text: $json.script || $json.title, voice_id: $('Config').item.json.HEYGEN_VOICE_ID } }], dimension: { width: 1280, height: 720 } }) }}",
         "options": {}
       },
-      "id": "heygen-submete",
+      "id": "heygen",
       "name": "HeyGen Submete",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1700, 300],
-      "notes": "Use dimension (NÃO aspect_ratio). 1280x720 landscape p/ aula; 720x1280 p/ shorts. Credencial: X-Api-Key = HEYGEN_API_KEY"
+      "position": [1680, 620],
+      "notes": "callback_id = id da aula. Use dimension (NÃO aspect_ratio). Credencial: X-Api-Key = HEYGEN_API_KEY. Registre o webhook global do HeyGen apontando p/ {AULAI_URL}/api/webhooks/heygen?secret=HEYGEN_WEBHOOK_SECRET."
     },
     {
       "parameters": {
@@ -153,84 +227,12 @@
         "jsonBody": "={{ JSON.stringify({ heygenRef: $json.data.video_id, videoStatus: 'RENDERING' }) }}",
         "options": {}
       },
-      "id": "marca-rendering",
+      "id": "patch-rendering",
       "name": "Aulai Marca Rendering",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1920, 300],
-      "notes": "Guarda heygenRef p/ polling. (Opcional: gerar arte no Canva e setar thumbnailUrl aqui)"
-    },
-    {
-      "parameters": { "amount": 5, "unit": "minutes" },
-      "id": "wait",
-      "name": "Aguarda 5min",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [2140, 300],
-      "notes": "Sempre setar unit E amount."
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "=https://api.heygen.com/v1/video_status.get?video_id={{ $('Aulai Marca Rendering').item.json.lesson.heygenRef }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {}
-      },
-      "id": "heygen-status",
-      "name": "HeyGen Verifica Status",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [2360, 300]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": { "caseSensitive": true, "version": 2 },
-          "conditions": [
-            { "id": "c1", "leftValue": "={{ $json.data.status }}", "rightValue": "completed", "operator": { "type": "string", "operation": "equals" } }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "if-pronto",
-      "name": "IF Pronto",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [2580, 300]
-    },
-    {
-      "parameters": {
-        "method": "PATCH",
-        "url": "={{ $('Config').item.json.AULAI_URL }}/api/courses/{{ $('Config').item.json.courseId }}/lessons/{{ $('Split Aulas').item.json.id }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ videoUrl: $json.data.video_url, videoStatus: 'READY' }) }}",
-        "options": {}
-      },
-      "id": "marca-ready",
-      "name": "Aulai Marca Vídeo Pronto",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [2800, 200]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ $('Config').item.json.AULAI_URL }}/api/courses/{{ $('Config').item.json.courseId }}/ready",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {}
-      },
-      "id": "curso-pronto",
-      "name": "Aulai Curso Pronto",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [3020, 200],
-      "notes": "Chamar quando TODAS as aulas estiverem READY (ex.: após o último item do batch). Move curso p/ AGUARDANDO_APROVACAO."
+      "position": [1900, 620],
+      "notes": "Fim do workflow. O resto acontece quando o HeyGen chamar o webhook do Aulai (vídeo pronto → READY → quando todas prontas, curso vai p/ AGUARDANDO_APROVACAO e dispara WhatsApp)."
     }
   ],
   "connections": {
@@ -239,15 +241,24 @@
     "Claude Gera Currículo": { "main": [[{ "node": "Extrai Currículo", "type": "main", "index": 0 }]] },
     "Extrai Currículo": { "main": [[{ "node": "Aulai Salva Metadados", "type": "main", "index": 0 }]] },
     "Aulai Salva Metadados": { "main": [[{ "node": "Aulai Salva Currículo", "type": "main", "index": 0 }]] },
-    "Aulai Salva Currículo": { "main": [[{ "node": "Split Módulos", "type": "main", "index": 0 }]] },
-    "Split Módulos": { "main": [[{ "node": "Split Aulas", "type": "main", "index": 0 }]] },
+    "Aulai Salva Currículo": {
+      "main": [[
+        { "node": "Capa Curso (input)", "type": "main", "index": 0 },
+        { "node": "Split Módulos", "type": "main", "index": 0 }
+      ]]
+    },
+    "Capa Curso (input)": { "main": [[{ "node": "Canva Cover (curso)", "type": "main", "index": 0 }]] },
+    "Canva Cover (curso)": { "main": [[{ "node": "Aulai Capa Curso", "type": "main", "index": 0 }]] },
+    "Split Módulos": {
+      "main": [[
+        { "node": "Capa Módulo (input)", "type": "main", "index": 0 },
+        { "node": "Split Aulas", "type": "main", "index": 0 }
+      ]]
+    },
+    "Capa Módulo (input)": { "main": [[{ "node": "Canva Cover (módulo)", "type": "main", "index": 0 }]] },
+    "Canva Cover (módulo)": { "main": [[{ "node": "Aulai Capa Módulo", "type": "main", "index": 0 }]] },
     "Split Aulas": { "main": [[{ "node": "HeyGen Submete", "type": "main", "index": 0 }]] },
-    "HeyGen Submete": { "main": [[{ "node": "Aulai Marca Rendering", "type": "main", "index": 0 }]] },
-    "Aulai Marca Rendering": { "main": [[{ "node": "Aguarda 5min", "type": "main", "index": 0 }]] },
-    "Aguarda 5min": { "main": [[{ "node": "HeyGen Verifica Status", "type": "main", "index": 0 }]] },
-    "HeyGen Verifica Status": { "main": [[{ "node": "IF Pronto", "type": "main", "index": 0 }]] },
-    "IF Pronto": { "main": [[{ "node": "Aulai Marca Vídeo Pronto", "type": "main", "index": 0 }], [{ "node": "Aguarda 5min", "type": "main", "index": 0 }]] },
-    "Aulai Marca Vídeo Pronto": { "main": [[{ "node": "Aulai Curso Pronto", "type": "main", "index": 0 }]] }
+    "HeyGen Submete": { "main": [[{ "node": "Aulai Marca Rendering", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" }
 }

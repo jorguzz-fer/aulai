@@ -47,6 +47,7 @@
       "parameters": {
         "rules": {
           "values": [
+            { "conditions": { "options": { "version": 2 }, "conditions": [{ "leftValue": "={{ $json.event }}", "rightValue": "course.ready_for_approval", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "outputKey": "ready" },
             { "conditions": { "options": { "version": 2 }, "conditions": [{ "leftValue": "={{ $json.event }}", "rightValue": "course.approved", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "outputKey": "approved" },
             { "conditions": { "options": { "version": 2 }, "conditions": [{ "leftValue": "={{ $json.event }}", "rightValue": "course.changes_requested", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "outputKey": "changes" },
             { "conditions": { "options": { "version": 2 }, "conditions": [{ "leftValue": "={{ $json.event }}", "rightValue": "course.scheduled", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "outputKey": "scheduled" },
@@ -60,6 +61,24 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
       "position": [620, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.ZAPI_BASE }}/send-text",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ phone: $('Config').item.json.OWNER_PHONE, message: '🎬 Curso pronto para aprovação: ' + $json.data.title + '\\n' + $('Config').item.json.AULAI_URL }) }}",
+        "options": {}
+      },
+      "id": "wa-ready",
+      "name": "WA Pronto p/ Aprovação",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, -80],
+      "notes": "Credencial: Client-Token = ZAPI_CLIENT_TOKEN"
     },
     {
       "parameters": {
@@ -147,6 +166,7 @@
     "Verifica HMAC": { "main": [[{ "node": "Switch Evento", "type": "main", "index": 0 }]] },
     "Switch Evento": {
       "main": [
+        [{ "node": "WA Pronto p/ Aprovação", "type": "main", "index": 0 }],
         [{ "node": "WA Aprovado", "type": "main", "index": 0 }],
         [{ "node": "WA Ajuste", "type": "main", "index": 0 }],
         [{ "node": "Aguarda Agendamento", "type": "main", "index": 0 }],

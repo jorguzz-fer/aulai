@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 
 // NÃO funciona em Edge runtime — exige Node runtime nas rotas que chamam isto.
 export type DomainEvent =
+  | "course.ready_for_approval"
   | "course.approved"
   | "course.changes_requested"
   | "course.scheduled"

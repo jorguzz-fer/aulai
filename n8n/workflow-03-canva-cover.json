@@ -1,0 +1,107 @@
+{
+  "name": "Aulai 03 — Canva Cover (sub-workflow)",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "trigger",
+      "name": "Quando chamado",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [-40, 300],
+      "notes": "Entrada esperada: { text, brandTemplateId, canvaToken } — ou use Credentials para o token."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.canva.com/rest/v1/autofills",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ brand_template_id: $json.brandTemplateId, data: { title: { type: 'text', text: $json.text } } }) }}",
+        "options": {}
+      },
+      "id": "autofill",
+      "name": "Canva Autofill",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [180, 300],
+      "notes": "Credencial Header Auth: Name = Authorization, Value = Bearer <CANVA_TOKEN>. 'title' = nome do campo de texto no seu brand template."
+    },
+    { "parameters": { "amount": 15 }, "id": "wait1", "name": "Aguarda Autofill", "type": "n8n-nodes-base.wait", "typeVersion": 1.1, "position": [400, 300] },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.canva.com/rest/v1/autofills/{{ $('Canva Autofill').item.json.job.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "get-autofill",
+      "name": "Canva Get Autofill",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [620, 300],
+      "notes": "job.status deve ser 'success'; se 'in_progress', adicione um IF→Wait loop."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.canva.com/rest/v1/exports",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ design_id: $json.job.result.design.id, format: { type: 'png' } }) }}",
+        "options": {}
+      },
+      "id": "export",
+      "name": "Canva Export",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [840, 300]
+    },
+    { "parameters": { "amount": 15 }, "id": "wait2", "name": "Aguarda Export", "type": "n8n-nodes-base.wait", "typeVersion": 1.1, "position": [1060, 300] },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.canva.com/rest/v1/exports/{{ $('Canva Export').item.json.job.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "get-export",
+      "name": "Canva Get Export",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1280, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "1", "name": "url", "value": "={{ $json.job.urls[0] }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "return",
+      "name": "Retorna URL",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1500, 300]
+    }
+  ],
+  "connections": {
+    "Quando chamado": { "main": [[{ "node": "Canva Autofill", "type": "main", "index": 0 }]] },
+    "Canva Autofill": { "main": [[{ "node": "Aguarda Autofill", "type": "main", "index": 0 }]] },
+    "Aguarda Autofill": { "main": [[{ "node": "Canva Get Autofill", "type": "main", "index": 0 }]] },
+    "Canva Get Autofill": { "main": [[{ "node": "Canva Export", "type": "main", "index": 0 }]] },
+    "Canva Export": { "main": [[{ "node": "Aguarda Export", "type": "main", "index": 0 }]] },
+    "Aguarda Export": { "main": [[{ "node": "Canva Get Export", "type": "main", "index": 0 }]] },
+    "Canva Get Export": { "main": [[{ "node": "Retorna URL", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

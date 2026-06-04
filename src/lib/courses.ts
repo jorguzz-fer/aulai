@@ -1,4 +1,4 @@
-import { Stage, Gate, Decision, Channel, Source } from "@prisma/client";
+import { Stage, Gate, Decision, Channel, Source, AssetStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { nextStageForDecision, canPublish, canSchedule, StageTransitionError } from "@/lib/stages";
 import { emitEvent } from "@/lib/events";
@@ -104,16 +104,71 @@ export async function updateLessonAsset(lessonId: string, input: LessonAssetInpu
   return prisma.lesson.update({ where: { id: lessonId }, data: input });
 }
 
+/** Atualiza a capa (Canva) de um módulo. */
+export async function updateModuleThumbnail(moduleId: string, thumbnailUrl: string) {
+  return prisma.module.update({ where: { id: moduleId }, data: { thumbnailUrl } });
+}
+
 /**
- * Marca o curso como pronto para aprovação (EM_PRODUCAO → AGUARDANDO_APROVACAO).
- * Chamado pelo n8n quando todos os vídeos estão READY.
+ * Marca o curso como pronto para aprovação (EM_PRODUCAO → AGUARDANDO_APROVACAO)
+ * e emite o evento que dispara a notificação de WhatsApp.
  */
 export async function markReadyForApproval(id: string) {
-  return prisma.course.update({
+  const updated = await prisma.course.update({
     where: { id },
     data: { stage: Stage.AGUARDANDO_APROVACAO, stageChangedAt: new Date() },
     include: courseInclude,
   });
+  emitEvent("course.ready_for_approval", { id: updated.id, title: updated.title });
+  return updated;
+}
+
+/**
+ * Resultado de render do HeyGen (via webhook). Casa a aula por video_id
+ * (heygenRef) ou callback_id (id da aula). Quando TODAS as aulas do curso
+ * ficam READY, avança o curso para AGUARDANDO_APROVACAO automaticamente.
+ */
+export async function recordHeygenResult(opts: {
+  videoId?: string;
+  callbackId?: string;
+  success: boolean;
+  videoUrl?: string;
+}) {
+  const lesson = opts.videoId
+    ? await prisma.lesson.findFirst({ where: { heygenRef: opts.videoId } })
+    : opts.callbackId
+      ? await prisma.lesson.findUnique({ where: { id: opts.callbackId } })
+      : null;
+  if (!lesson) return { matched: false as const };
+
+  await prisma.lesson.update({
+    where: { id: lesson.id },
+    data: opts.success
+      ? { videoStatus: AssetStatus.READY, videoUrl: opts.videoUrl ?? lesson.videoUrl }
+      : { videoStatus: AssetStatus.FAILED },
+  });
+
+  const mod = await prisma.module.findUnique({
+    where: { id: lesson.moduleId },
+    select: { courseId: true },
+  });
+  if (!mod) return { matched: true as const, lessonId: lesson.id };
+
+  const pending = await prisma.lesson.count({
+    where: { module: { courseId: mod.courseId }, videoStatus: { not: AssetStatus.READY } },
+  });
+
+  if (opts.success && pending === 0) {
+    const course = await prisma.course.findUnique({
+      where: { id: mod.courseId },
+      select: { stage: true },
+    });
+    if (course?.stage === Stage.EM_PRODUCAO) {
+      await markReadyForApproval(mod.courseId);
+    }
+  }
+
+  return { matched: true as const, lessonId: lesson.id, courseId: mod.courseId, pending };
 }
 
 /** Grava decisão de aprovação + evento, na MESMA transação. Emite webhook depois. */
