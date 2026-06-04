@@ -1,0 +1,167 @@
+// Aulai — criador de cursos automático com IA
+// Domínio hierárquico: Course → Module → Lesson (+ auditoria via ApprovalEvent)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Estado e enums ──────────────────────────────────────
+
+enum Stage {
+  AGUARDANDO_GERACAO   // criado (stub), aguardando o n8n gerar
+  EM_PRODUCAO          // IA gerando currículo + vídeos (HeyGen) + artes (Canva)
+  AGUARDANDO_APROVACAO // tudo pronto, aguardando aprovação humana (actionable)
+  AJUSTE_PEDIDO        // humano pediu ajuste
+  APROVADO             // aprovado, pronto p/ publicar
+  AGENDADO             // agendado para publicar em scheduledFor
+  PUBLICADO            // publicado no ClassOS
+}
+
+enum Gate {
+  COURSE // gate único
+}
+
+enum Decision {
+  APPROVED
+  CHANGES_REQUESTED
+}
+
+enum Channel {
+  SCREEN
+  WHATSAPP
+}
+
+enum Source {
+  WHATSAPP
+  MANUAL
+}
+
+enum AssetStatus {
+  PENDING
+  RENDERING
+  READY
+  FAILED
+}
+
+enum Role {
+  OWNER
+  TEAM
+}
+
+// ── Usuários e clientes ─────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(TEAM)
+  createdAt    DateTime @default(now())
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String? // telefone autorizado p/ intake WhatsApp
+  createdAt DateTime @default(now())
+  courses   Course[]
+}
+
+// ── Curso (raiz do domínio) ─────────────────────────────
+
+model Course {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+
+  // metadados (espelham o cabeçalho do curso de exemplo)
+  title           String
+  subtitle        String?
+  audience        String? @db.Text
+  promise         String? @db.Text
+  prerequisite    String? @db.Text
+  expectedResult  String? @db.Text
+  format          String?
+  complianceNotes String? @db.Text
+
+  // estado
+  source         Source    @default(WHATSAPP)
+  stage          Stage     @default(AGUARDANDO_GERACAO)
+  thumbnailUrl   String?
+  externalRef    String? // id do curso no ClassOS após publicar
+  scheduledFor   DateTime?
+  publishedAt    DateTime?
+  stageChangedAt DateTime  @default(now())
+  archived       Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  modules Module[]
+  events  ApprovalEvent[]
+
+  @@index([stage, archived])
+}
+
+model Module {
+  id       String @id @default(cuid())
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  order            Int
+  title            String
+  description      String? @db.Text
+  supportMaterials String? @db.Text
+  links            Json? // [{ label, url }]
+  thumbnailUrl     String?
+
+  lessons Lesson[]
+
+  @@index([courseId, order])
+}
+
+model Lesson {
+  id       String @id @default(cuid())
+  moduleId String
+  module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  order           Int
+  title           String
+  durationMinutes Int?
+  objective       String? @db.Text
+  script          String? @db.Text // roteiro temporizado
+  exercise        String? @db.Text
+
+  // assets gerados
+  videoUrl     String?
+  heygenRef    String? // id do job HeyGen p/ polling
+  videoStatus  AssetStatus @default(PENDING)
+  thumbnailUrl String?
+
+  @@index([moduleId, order])
+}
+
+// ── Auditoria de aprovação ──────────────────────────────
+
+model ApprovalEvent {
+  id       String @id @default(cuid())
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  gate        Gate
+  decision    Decision
+  channel     Channel @default(SCREEN)
+  actorUserId String?
+  actorName   String // denormalizado (aprovação via WhatsApp/serviço não precisa de User)
+  comment     String? @db.Text
+  isFallback  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([courseId, createdAt])
+}
