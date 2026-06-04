@@ -65,11 +65,12 @@ model User {
 }
 
 model Client {
-  id        String   @id @default(cuid())
-  name      String
-  phone     String? // telefone autorizado p/ intake WhatsApp
-  createdAt DateTime @default(now())
-  courses   Course[]
+  id            String   @id @default(cuid())
+  name          String
+  phone         String? // telefone autorizado p/ intake WhatsApp
+  classOsApiKey String? // chave x-api-key do ClassOS desta escola (cifrada — ver lib/secrets)
+  createdAt     DateTime @default(now())
+  courses       Course[]
 }
 
 // ── Curso (raiz do domínio) ─────────────────────────────

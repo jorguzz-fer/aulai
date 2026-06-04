@@ -1,61 +1,88 @@
 import type { PublishTarget, PublishResult, CourseWithContent } from "./target";
 
 /**
- * Client REST do ClassOS.
+ * Client da REST API v1 do ClassOS.
  *
- * ⚠️ CONTRATO ASSUMIDO — ajustar quando o contrato real do ClassOS chegar.
- * Payload montado a partir da estrutura completa do curso (metadados + módulos + aulas + assets).
+ * Contrato: POST {CLASSOS_API_URL}/api/v1/courses
+ *   - Auth: header x-api-key (chave POR ESCOLA — resolve o tenant no ClassOS)
+ *   - Bulk + idempotente por (organização, sourceRef)
+ *   - sourceRef em todos os níveis preserva o progresso dos alunos na republicação
+ *   - Resposta: { id, published }  (201 criado / 200 atualizado)
  */
+
+// Descrição do curso composta a partir dos metadados do Aulai (ClassOS tem um
+// único campo `description`; o Aulai guarda público/promessa/etc separados).
+function buildDescription(c: CourseWithContent): string | undefined {
+  const parts = [
+    c.audience && `Público: ${c.audience}`,
+    c.promise && `Promessa: ${c.promise}`,
+    c.prerequisite && `Pré-requisito: ${c.prerequisite}`,
+    c.expectedResult && `Resultado esperado: ${c.expectedResult}`,
+    c.complianceNotes && `Conformidade: ${c.complianceNotes}`,
+  ].filter(Boolean);
+  return parts.length ? parts.join("\n\n") : undefined;
+}
+
+// Descrição do módulo: junta descrição + materiais de apoio + links.
+function buildModuleDescription(m: CourseWithContent["modules"][number]): string | undefined {
+  const links = Array.isArray(m.links)
+    ? (m.links as { label?: string; url?: string }[])
+        .map((l) => (l?.label && l?.url ? `${l.label}: ${l.url}` : l?.url))
+        .filter(Boolean)
+    : [];
+  const parts = [
+    m.description,
+    m.supportMaterials && `Material de apoio: ${m.supportMaterials}`,
+    links.length ? `Links:\n${links.join("\n")}` : undefined,
+  ].filter(Boolean);
+  return parts.length ? parts.join("\n\n") : undefined;
+}
+
 function buildPayload(course: CourseWithContent) {
   return {
+    sourceRef: course.id, // id do curso no Aulai — chave de idempotência
     title: course.title,
     subtitle: course.subtitle ?? undefined,
-    thumbnailUrl: course.thumbnailUrl ?? undefined,
-    metadata: {
-      audience: course.audience ?? undefined,
-      promise: course.promise ?? undefined,
-      prerequisite: course.prerequisite ?? undefined,
-      expectedResult: course.expectedResult ?? undefined,
-      format: course.format ?? undefined,
-      complianceNotes: course.complianceNotes ?? undefined,
-    },
+    description: buildDescription(course),
+    level: "ALL_LEVELS",
+    visibility: "PRIVATE",
+    publish: true,
     modules: [...course.modules]
       .sort((a, b) => a.order - b.order)
       .map((m) => ({
+        sourceRef: m.id,
         title: m.title,
-        description: m.description ?? undefined,
-        supportMaterials: m.supportMaterials ?? undefined,
-        links: m.links ?? undefined,
-        thumbnailUrl: m.thumbnailUrl ?? undefined,
+        description: buildModuleDescription(m),
         lessons: [...m.lessons]
           .sort((a, b) => a.order - b.order)
           .map((l) => ({
+            sourceRef: l.id,
             title: l.title,
+            // Aula com vídeo renderizado (HeyGen) → VIDEO/file; senão TEXT.
+            ...(l.videoUrl
+              ? { contentType: "VIDEO", videoProvider: "file", videoSource: l.videoUrl }
+              : { contentType: "TEXT" }),
             durationMinutes: l.durationMinutes ?? undefined,
-            objective: l.objective ?? undefined,
-            script: l.script ?? undefined,
-            exercise: l.exercise ?? undefined,
-            videoUrl: l.videoUrl ?? undefined,
-            thumbnailUrl: l.thumbnailUrl ?? undefined,
+            isPreview: false,
+            isRequired: true,
           })),
       })),
   };
 }
 
 class ClassOSTarget implements PublishTarget {
-  async publish(course: CourseWithContent): Promise<PublishResult> {
+  async publish(course: CourseWithContent, apiKey?: string): Promise<PublishResult> {
     const baseUrl = process.env.CLASSOS_API_URL;
-    const apiKey = process.env.CLASSOS_API_KEY;
-    if (!baseUrl) {
-      throw new Error("CLASSOS_API_URL não configurada");
+    if (!baseUrl) throw new Error("CLASSOS_API_URL não configurada");
+
+    const key = apiKey ?? process.env.CLASSOS_API_KEY;
+    if (!key) {
+      throw new Error("Chave do ClassOS ausente (Client.classOsApiKey ou CLASSOS_API_KEY)");
     }
 
-    const res = await fetch(`${baseUrl.replace(/\/$/, "")}/courses`, {
+    const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/v1/courses`, {
       method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...(apiKey ? { "x-api-key": apiKey } : {}),
-      },
+      headers: { "content-type": "application/json", "x-api-key": key },
       body: JSON.stringify(buildPayload(course)),
     });
 
@@ -64,16 +91,9 @@ class ClassOSTarget implements PublishTarget {
       throw new Error(`ClassOS respondeu ${res.status}: ${text}`);
     }
 
-    const json = (await res.json().catch(() => ({}))) as {
-      id?: string;
-      courseId?: string;
-      externalRef?: string;
-    };
-    const externalRef = json.id ?? json.courseId ?? json.externalRef;
-    if (!externalRef) {
-      throw new Error("ClassOS não retornou um id de curso");
-    }
-    return { externalRef };
+    const json = (await res.json().catch(() => ({}))) as { id?: string; published?: boolean };
+    if (!json.id) throw new Error("ClassOS não retornou o id do curso");
+    return { externalRef: json.id, published: json.published ?? true };
   }
 }
 

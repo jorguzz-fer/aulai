@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { nextStageForDecision, canPublish, canSchedule, StageTransitionError } from "@/lib/stages";
 import { emitEvent } from "@/lib/events";
 import { classOSTarget } from "@/lib/publish/classos";
+import { decryptSecret } from "@/lib/secrets";
 import type { Actor } from "@/lib/apiAuth";
 import type {
   CreateCourseInput,
@@ -183,7 +184,11 @@ export async function publishCourse(id: string) {
     throw new StageTransitionError(`Não é possível publicar um curso em '${course.stage}'.`);
   }
 
-  const { externalRef } = await classOSTarget.publish(course);
+  // Chave por escola (cifrada no Client); cai para a env global se não houver.
+  const apiKey = course.client?.classOsApiKey
+    ? decryptSecret(course.client.classOsApiKey)
+    : undefined;
+  const { externalRef } = await classOSTarget.publish(course, apiKey);
 
   const updated = await prisma.course.update({
     where: { id },

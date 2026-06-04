@@ -69,10 +69,21 @@ e o **Set "Config"** com URLs/telefones. No plano free não use `$env.*`.
 - **01 Produção:** Claude gera currículo → salva → HeyGen + Canva por aula → polling → marca pronto.
 - **02 Eventos:** verifica HMAC → switch → WhatsApp / publica no ClassOS.
 
-## Publicação no ClassOS
+## Publicação no ClassOS (REST API v1)
 
-`src/lib/publish/classos.ts` implementa `PublishTarget` com payload **assumido** (ajustar quando o
-contrato real chegar). Configure `CLASSOS_API_URL` e `CLASSOS_API_KEY`.
+`src/lib/publish/classos.ts` implementa `PublishTarget` contra o contrato real do ClassOS:
+`POST {CLASSOS_API_URL}/api/v1/courses` — **bulk e idempotente** por `(escola, sourceRef)`.
+O Aulai envia o **próprio id** como `sourceRef` em curso/módulo/aula (preserva o progresso dos
+alunos na republicação) e recebe `{ id, published }`.
+
+**Chave por escola:** a `x-api-key` do ClassOS é por organização. No Aulai ela fica cifrada no
+registro `Client` (AES-256-GCM via `SECRET_ENCRYPTION_KEY`). Para guardá-la:
+
+```bash
+tsx scripts/set-classos-key.ts --client <id-ou-nome> --key clsk_xxx
+```
+
+`CLASSOS_API_KEY` no env serve só como fallback global (dev / escola única).
 
 ## Deploy (Coolify)
 
