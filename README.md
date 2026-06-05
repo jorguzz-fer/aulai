@@ -65,7 +65,9 @@ Importe os 3 workflows de `n8n/`. Configure **Credentials** (Header Auth) para A
 (`x-api-key`), HeyGen (`X-Api-Key`), Z-API (`Client-Token`), Aulai (`x-api-key` = `SERVICE_API_KEY`)
 e o **Set "Config"** com URLs/telefones. No plano free não use `$env.*`.
 
-- **00 Intake:** WhatsApp → filtra → Claude interpreta brief → cria curso → dispara Produção.
+- **00 Intake:** WhatsApp → filtra remetente → **Switch por tipo** (texto / imagem / áudio) →
+  Claude interpreta o briefing (visão p/ imagem; Whisper transcreve áudio) → **valida** → cria curso
+  e dispara produção, ou responde com gentileza se não entendeu / tipo não suportado.
 - **01 Produção:** Claude gera currículo → salva → **(opcional)** Canva gera capas (curso/módulo,
   só se `BRAND_TEMPLATE_ID` estiver configurado) → HeyGen submete um vídeo por aula (com
   `callback_id`) e **encerra**. Sem polling.

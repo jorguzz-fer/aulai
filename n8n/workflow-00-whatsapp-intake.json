@@ -13,8 +13,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -40,
-        300
+        -60,
+        360
       ]
     },
     {
@@ -41,8 +41,14 @@
             },
             {
               "id": "4",
+              "name": "PRODUCAO_WEBHOOK",
+              "value": "https://n8n.seu-dominio.com/webhook/aulai-producao",
+              "type": "string"
+            },
+            {
+              "id": "5",
               "name": "INTAKE_PROMPT",
-              "value": "Você interpreta pedidos de criação de curso enviados por WhatsApp. A partir da\nmensagem do usuário, extraia um briefing estruturado.\n\nResponda **exclusivamente** com um objeto JSON válido (sem markdown, sem\ncomentários), neste formato:\n\n```\n{\n  \"title\": \"título do curso pedido\",\n  \"audience\": \"público-alvo, se mencionado (senão infira do tema)\",\n  \"lessonCount\": 10,\n  \"tone\": \"tom desejado: direto | acolhedor | técnico (padrão: direto)\",\n  \"area\": \"área do tema (ex.: saúde, marketing, finanças)\"\n}\n```\n\nRegras:\n- Se a mensagem não disser a quantidade de aulas, use `10`.\n- Se não disser o tom, use `\"direto\"`.\n- `area` ajuda a decidir conformidade depois (ex.: `\"saúde\"` aciona regras do CFM).\n- Não inclua nada fora do JSON.",
+              "value": "Você interpreta pedidos de criação de curso recebidos por WhatsApp — o conteúdo\npode vir como **texto**, **transcrição de um áudio** ou uma **imagem** (ex.: print\nou foto com a ideia do curso). Extraia um briefing estruturado.\n\n## Saída — APENAS JSON (sem markdown, sem comentários)\n\n**Se for um pedido claro de curso**, responda:\n\n```\n{\n  \"ok\": true,\n  \"title\": \"título do curso pedido\",\n  \"audience\": \"público-alvo, se mencionado (senão infira do tema)\",\n  \"lessonCount\": 10,\n  \"tone\": \"direto | acolhedor | técnico (padrão: direto)\",\n  \"area\": \"área do tema (ex.: saúde, marketing, finanças)\"\n}\n```\n\n**Se NÃO for um pedido de curso, ou estiver vago demais** para virar um título\n(ex.: \"oi\", \"tudo bem?\", uma imagem sem contexto), responda:\n\n```\n{ \"ok\": false, \"reason\": \"<frase curta e gentil pedindo o que falta>\" }\n```\n\nExemplo de `reason`: \"Me diz qual o tema do curso e pra quem é, que eu já começo. 🙂\"\n\n## Regras\n\n- Se a mensagem não disser a quantidade de aulas, use `10`.\n- Se não disser o tom, use `\"direto\"`.\n- `area` ajuda a decidir conformidade depois (ex.: `\"saúde\"` aciona regras do CFM).\n- Nunca invente um pedido que o usuário não fez: na dúvida, responda `ok: false`.\n- Não inclua nada fora do objeto JSON.",
               "type": "string"
             }
           ]
@@ -54,8 +60,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        180,
-        300
+        160,
+        360
       ]
     },
     {
@@ -103,8 +109,189 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        400,
-        300
+        380,
+        360
+      ],
+      "notes": "Só segue se for mensagem recebida (não própria), individual e do telefone autorizado. Senão, ignora."
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Z-API Webhook').item.json.body.text?.message }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "texto"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Z-API Webhook').item.json.body.image?.imageUrl }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "imagem"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Z-API Webhook').item.json.body.audio?.audioUrl }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "audio"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "switch-tipo",
+      "name": "Switch Tipo",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        600,
+        360
+      ],
+      "notes": "Saídas: 0 texto, 1 imagem, 2 áudio, 3 fallback (tipo não suportado)."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "inputText",
+              "value": "={{ $('Z-API Webhook').item.json.body.text.message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "norm-text",
+      "name": "Normaliza Texto",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        840,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Z-API Webhook').item.json.body.audio.audioUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "id": "baixa-audio",
+      "name": "Baixa Áudio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        840,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/audio/transcriptions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "contentType": "multipart-form-data",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "model",
+              "value": "whisper-1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "whisper",
+      "name": "Whisper Transcreve",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1060,
+        540
+      ],
+      "notes": "OPCIONAL. Credencial Header Auth: Name = Authorization, Value = Bearer <OPENAI_API_KEY>. Se não quiser áudio, remova as 3 etapas de áudio e ligue o Switch saída 2 ao 'WA Tipo Não Suportado'."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "inputText",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "norm-audio",
+      "name": "Normaliza Áudio",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1280,
+        540
       ]
     },
     {
@@ -124,40 +311,92 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ model: 'claude-opus-4-7', max_tokens: 1024, system: $('Config').item.json.INTAKE_PROMPT, messages: [{ role: 'user', content: $('Z-API Webhook').item.json.body.text.message }] }) }}",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-opus-4-7', max_tokens: 1024, system: $('Config').item.json.INTAKE_PROMPT, messages: [{ role: 'user', content: $json.inputText }] }) }}",
         "options": {}
       },
-      "id": "claude-interpreta",
-      "name": "Claude Interpreta",
+      "id": "claude-texto",
+      "name": "Claude Interpreta (texto)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        620,
-        220
+        1120,
+        280
       ],
-      "notes": "Credencial Header Auth: Name = x-api-key, Value = ANTHROPIC_API_KEY"
+      "notes": "Recebe texto OU transcrição de áudio. Credencial: x-api-key = ANTHROPIC_API_KEY"
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "id": "1",
-              "name": "brief",
-              "value": "={{ JSON.parse($json.content[0].text) }}",
-              "type": "object"
+              "name": "anthropic-version",
+              "value": "2023-06-01"
             }
           ]
         },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-opus-4-7', max_tokens: 1024, system: $('Config').item.json.INTAKE_PROMPT, messages: [{ role: 'user', content: [ { type: 'image', source: { type: 'url', url: $('Z-API Webhook').item.json.body.image.imageUrl } }, { type: 'text', text: 'Interprete este pedido de curso. Legenda: ' + ($('Z-API Webhook').item.json.body.image.caption || '(sem legenda)') } ] }] }) }}",
         "options": {}
       },
-      "id": "extrai-brief",
-      "name": "Extrai Brief",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "id": "claude-imagem",
+      "name": "Claude Interpreta (imagem)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
-        840,
-        220
+        1120,
+        420
+      ],
+      "notes": "Visão do Claude lê a imagem. Credencial: x-api-key = ANTHROPIC_API_KEY"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.content?.[0]?.text ?? '';\nlet brief = null, ok = false, reason = 'Não consegui entender o pedido. Me diz o tema do curso e pra quem é. 🙂';\ntry {\n  brief = JSON.parse(raw);\n  if (brief && brief.ok !== false && brief.title && String(brief.title).trim()) {\n    ok = true;\n  } else if (brief && brief.ok === false && brief.reason) {\n    reason = brief.reason;\n  }\n} catch (e) {}\nreturn [{ json: { ok, brief: brief || {}, reason } }];"
+      },
+      "id": "valida",
+      "name": "Valida Brief",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        340
+      ],
+      "notes": "Parseia o JSON do Claude. ok=true só se houver title. Senão devolve reason p/ responder ao usuário."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "x",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-ok",
+      "name": "Brief OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1720,
+        340
       ]
     },
     {
@@ -168,7 +407,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ title: $json.brief.title }) }}",
+        "jsonBody": "={{ JSON.stringify({ title: $json.brief.title, audience: $json.brief.audience }) }}",
         "options": {}
       },
       "id": "cria-curso",
@@ -176,18 +415,18 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1060,
-        220
+        1940,
+        240
       ],
-      "notes": "Credencial Header Auth: Name = x-api-key, Value = SERVICE_API_KEY"
+      "notes": "Credencial: x-api-key = SERVICE_API_KEY"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://n8n.seu-dominio.com/webhook/aulai-producao",
+        "url": "={{ $('Config').item.json.PRODUCAO_WEBHOOK }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ courseId: $json.course.id, brief: $('Extrai Brief').item.json.brief }) }}",
+        "jsonBody": "={{ JSON.stringify({ courseId: $json.course.id, brief: $('Valida Brief').item.json.brief }) }}",
         "options": {}
       },
       "id": "dispara-producao",
@@ -195,8 +434,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1280,
-        220
+        2160,
+        240
       ]
     },
     {
@@ -207,7 +446,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ phone: $('Z-API Webhook').item.json.body.phone, message: '✅ Recebido! Estou gerando o curso \"' + $('Extrai Brief').item.json.brief.title + '\". Te aviso quando estiver pronto para aprovação.' }) }}",
+        "jsonBody": "={{ JSON.stringify({ phone: $('Z-API Webhook').item.json.body.phone, message: '✅ Recebido! Estou gerando o curso \"' + $('Valida Brief').item.json.brief.title + '\". Te aviso quando estiver pronto para aprovação.' }) }}",
         "options": {}
       },
       "id": "wa-confirma",
@@ -215,10 +454,52 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1500,
-        220
+        2380,
+        240
       ],
-      "notes": "Credencial Header Auth: Name = Client-Token, Value = ZAPI_CLIENT_TOKEN"
+      "notes": "Credencial: Client-Token = ZAPI_CLIENT_TOKEN"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.ZAPI_BASE }}/send-text",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ phone: $('Z-API Webhook').item.json.body.phone, message: $json.reason }) }}",
+        "options": {}
+      },
+      "id": "wa-nao-entendi",
+      "name": "WA Não Entendi",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1940,
+        440
+      ],
+      "notes": "Credencial: Client-Token = ZAPI_CLIENT_TOKEN"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.ZAPI_BASE }}/send-text",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ phone: $('Z-API Webhook').item.json.body.phone, message: 'Por enquanto eu entendo pedidos por texto, áudio ou imagem. Me manda o tema do curso assim. 🙂' }) }}",
+        "options": {}
+      },
+      "id": "wa-tipo",
+      "name": "WA Tipo Não Suportado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        840,
+        740
+      ],
+      "notes": "Credencial: Client-Token = ZAPI_CLIENT_TOKEN"
     }
   ],
   "connections": {
@@ -248,7 +529,7 @@
       "main": [
         [
           {
-            "node": "Claude Interpreta",
+            "node": "Switch Tipo",
             "type": "main",
             "index": 0
           }
@@ -256,22 +537,127 @@
         []
       ]
     },
-    "Claude Interpreta": {
+    "Switch Tipo": {
       "main": [
         [
           {
-            "node": "Extrai Brief",
+            "node": "Normaliza Texto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Claude Interpreta (imagem)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Baixa Áudio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "WA Tipo Não Suportado",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Extrai Brief": {
+    "Normaliza Texto": {
+      "main": [
+        [
+          {
+            "node": "Claude Interpreta (texto)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baixa Áudio": {
+      "main": [
+        [
+          {
+            "node": "Whisper Transcreve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Whisper Transcreve": {
+      "main": [
+        [
+          {
+            "node": "Normaliza Áudio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normaliza Áudio": {
+      "main": [
+        [
+          {
+            "node": "Claude Interpreta (texto)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Interpreta (texto)": {
+      "main": [
+        [
+          {
+            "node": "Valida Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Interpreta (imagem)": {
+      "main": [
+        [
+          {
+            "node": "Valida Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valida Brief": {
+      "main": [
+        [
+          {
+            "node": "Brief OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brief OK?": {
       "main": [
         [
           {
             "node": "Aulai Cria Curso",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "WA Não Entendi",
             "type": "main",
             "index": 0
           }
