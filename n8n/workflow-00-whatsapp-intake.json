@@ -12,15 +12,39 @@
       "name": "Z-API Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-40, 300]
+      "position": [
+        -40,
+        300
+      ]
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            { "id": "1", "name": "AULAI_URL", "value": "https://aulai.seu-dominio.com", "type": "string" },
-            { "id": "2", "name": "AUTHORIZED_PHONE", "value": "5511999999999", "type": "string" },
-            { "id": "3", "name": "ZAPI_BASE", "value": "https://api.z-api.io/instances/INSTANCE/token/TOKEN", "type": "string" }
+            {
+              "id": "1",
+              "name": "AULAI_URL",
+              "value": "https://aulai.seu-dominio.com",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "AUTHORIZED_PHONE",
+              "value": "5511999999999",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "ZAPI_BASE",
+              "value": "https://api.z-api.io/instances/INSTANCE/token/TOKEN",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "INTAKE_PROMPT",
+              "value": "Você interpreta pedidos de criação de curso enviados por WhatsApp. A partir da\nmensagem do usuário, extraia um briefing estruturado.\n\nResponda **exclusivamente** com um objeto JSON válido (sem markdown, sem\ncomentários), neste formato:\n\n```\n{\n  \"title\": \"título do curso pedido\",\n  \"audience\": \"público-alvo, se mencionado (senão infira do tema)\",\n  \"lessonCount\": 10,\n  \"tone\": \"tom desejado: direto | acolhedor | técnico (padrão: direto)\",\n  \"area\": \"área do tema (ex.: saúde, marketing, finanças)\"\n}\n```\n\nRegras:\n- Se a mensagem não disser a quantidade de aulas, use `10`.\n- Se não disser o tom, use `\"direto\"`.\n- `area` ajuda a decidir conformidade depois (ex.: `\"saúde\"` aciona regras do CFM).\n- Não inclua nada fora do JSON.",
+              "type": "string"
+            }
           ]
         },
         "options": {}
@@ -29,16 +53,46 @@
       "name": "Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [180, 300]
+      "position": [
+        180,
+        300
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "version": 2 },
+          "options": {
+            "caseSensitive": true,
+            "version": 2
+          },
           "conditions": [
-            { "id": "c1", "leftValue": "={{ $('Z-API Webhook').item.json.body.fromMe }}", "rightValue": false, "operator": { "type": "boolean", "operation": "equals" } },
-            { "id": "c2", "leftValue": "={{ $('Z-API Webhook').item.json.body.isGroup }}", "rightValue": false, "operator": { "type": "boolean", "operation": "equals" } },
-            { "id": "c3", "leftValue": "={{ $('Z-API Webhook').item.json.body.phone }}", "rightValue": "={{ $json.AUTHORIZED_PHONE }}", "operator": { "type": "string", "operation": "equals" } }
+            {
+              "id": "c1",
+              "leftValue": "={{ $('Z-API Webhook').item.json.body.fromMe }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $('Z-API Webhook').item.json.body.isGroup }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c3",
+              "leftValue": "={{ $('Z-API Webhook').item.json.body.phone }}",
+              "rightValue": "={{ $json.AUTHORIZED_PHONE }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
           ],
           "combinator": "and"
         },
@@ -48,7 +102,10 @@
       "name": "Filtra Remetente",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [400, 300]
+      "position": [
+        400,
+        300
+      ]
     },
     {
       "parameters": {
@@ -58,25 +115,38 @@
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "anthropic-version", "value": "2023-06-01" }]
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ model: 'claude-opus-4-7', max_tokens: 1024, system: 'Você interpreta pedidos de criação de curso. Extraia do texto do usuário um JSON com: title (string), audience (string), lessonCount (number, padrão 10), tone (string). Responda APENAS com JSON válido, sem markdown.', messages: [{ role: 'user', content: $('Z-API Webhook').item.json.body.text.message }] }) }}",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-opus-4-7', max_tokens: 1024, system: $('Config').item.json.INTAKE_PROMPT, messages: [{ role: 'user', content: $('Z-API Webhook').item.json.body.text.message }] }) }}",
         "options": {}
       },
       "id": "claude-interpreta",
       "name": "Claude Interpreta",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [620, 220],
+      "position": [
+        620,
+        220
+      ],
       "notes": "Credencial Header Auth: Name = x-api-key, Value = ANTHROPIC_API_KEY"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            { "id": "1", "name": "brief", "value": "={{ JSON.parse($json.content[0].text) }}", "type": "object" }
+            {
+              "id": "1",
+              "name": "brief",
+              "value": "={{ JSON.parse($json.content[0].text) }}",
+              "type": "object"
+            }
           ]
         },
         "options": {}
@@ -85,7 +155,10 @@
       "name": "Extrai Brief",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [840, 220]
+      "position": [
+        840,
+        220
+      ]
     },
     {
       "parameters": {
@@ -102,7 +175,10 @@
       "name": "Aulai Cria Curso",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1060, 220],
+      "position": [
+        1060,
+        220
+      ],
       "notes": "Credencial Header Auth: Name = x-api-key, Value = SERVICE_API_KEY"
     },
     {
@@ -118,7 +194,10 @@
       "name": "Dispara Produção",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1280, 220]
+      "position": [
+        1280,
+        220
+      ]
     },
     {
       "parameters": {
@@ -135,18 +214,94 @@
       "name": "WA Confirma",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1500, 220],
+      "position": [
+        1500,
+        220
+      ],
       "notes": "Credencial Header Auth: Name = Client-Token, Value = ZAPI_CLIENT_TOKEN"
     }
   ],
   "connections": {
-    "Z-API Webhook": { "main": [[{ "node": "Config", "type": "main", "index": 0 }]] },
-    "Config": { "main": [[{ "node": "Filtra Remetente", "type": "main", "index": 0 }]] },
-    "Filtra Remetente": { "main": [[{ "node": "Claude Interpreta", "type": "main", "index": 0 }], []] },
-    "Claude Interpreta": { "main": [[{ "node": "Extrai Brief", "type": "main", "index": 0 }]] },
-    "Extrai Brief": { "main": [[{ "node": "Aulai Cria Curso", "type": "main", "index": 0 }]] },
-    "Aulai Cria Curso": { "main": [[{ "node": "Dispara Produção", "type": "main", "index": 0 }]] },
-    "Dispara Produção": { "main": [[{ "node": "WA Confirma", "type": "main", "index": 0 }]] }
+    "Z-API Webhook": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Filtra Remetente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtra Remetente": {
+      "main": [
+        [
+          {
+            "node": "Claude Interpreta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Claude Interpreta": {
+      "main": [
+        [
+          {
+            "node": "Extrai Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrai Brief": {
+      "main": [
+        [
+          {
+            "node": "Aulai Cria Curso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aulai Cria Curso": {
+      "main": [
+        [
+          {
+            "node": "Dispara Produção",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispara Produção": {
+      "main": [
+        [
+          {
+            "node": "WA Confirma",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" }
+  "settings": {
+    "executionOrder": "v1"
+  }
 }

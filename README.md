@@ -72,6 +72,9 @@ e o **Set "Config"** com URLs/telefones. No plano free não use `$env.*`.
 - **02 Eventos:** verifica HMAC → switch → WhatsApp / publica no ClassOS.
 - **03 Canva Cover:** sub-workflow reutilizável (autofill → export → retorna URL da capa).
 
+Os **system prompts do Claude** ficam versionados em `n8n/prompts/*.md` (fonte de verdade) e são
+injetados no nó `Config` de cada workflow via `node n8n/prompts/sync-prompts.mjs`.
+
 ### Conclusão de vídeo via webhook (HeyGen)
 
 O HeyGen chama `POST {AULAI_URL}/api/webhooks/heygen?secret=HEYGEN_WEBHOOK_SECRET` quando cada
