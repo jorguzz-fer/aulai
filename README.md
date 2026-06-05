@@ -83,9 +83,11 @@ e o **Set "Config"** com URLs/telefones. No plano free não use `$env.*`.
 - **00 Intake:** WhatsApp → filtra remetente → **Switch por tipo** (texto / imagem / áudio) →
   Claude interpreta o briefing (visão p/ imagem; Whisper transcreve áudio) → **valida** → cria curso
   e dispara produção, ou responde com gentileza se não entendeu / tipo não suportado.
-- **01 Produção:** Claude gera currículo → salva → **(opcional)** Canva gera capas (curso/módulo,
-  só se `BRAND_TEMPLATE_ID` estiver configurado) → HeyGen submete um vídeo por aula (com
-  `callback_id`) e **encerra**. Sem polling.
+- **01 Produção:** Claude gera currículo → salva → HeyGen submete um vídeo por aula (com
+  `callback_id`) e **encerra**. Sem polling. **Publica sem dependências.**
+  - **Canva opcional:** para gerar capas (curso/módulo), use `workflow-01-producao-canva.json`
+    + `workflow-03-canva-cover.json` — importe e **publique o 03 primeiro**, depois aponte os nós
+    "Canva Cover" para o id dele. Requer Canva com brand template (Enterprise).
 - **02 Eventos:** verifica HMAC → switch → WhatsApp / publica no ClassOS.
 - **03 Canva Cover:** sub-workflow reutilizável (autofill → export → retorna URL da capa).
 

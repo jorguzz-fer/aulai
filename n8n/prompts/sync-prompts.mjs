@@ -19,6 +19,12 @@ const targets = [
     promptFile: "system-curriculo.md",
   },
   {
+    workflow: "workflow-01-producao-canva.json",
+    configNode: "Config",
+    assignment: "SYSTEM_PROMPT",
+    promptFile: "system-curriculo.md",
+  },
+  {
     workflow: "workflow-00-whatsapp-intake.json",
     configNode: "Config",
     assignment: "INTAKE_PROMPT",

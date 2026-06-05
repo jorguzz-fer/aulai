@@ -1,5 +1,5 @@
 {
-  "name": "Aulai 01 — Produção (Claude + HeyGen webhook)",
+  "name": "Aulai 01 — Produção (com Canva) [requer workflow 03 publicado]",
   "nodes": [
     {
       "parameters": {
@@ -173,6 +173,113 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a",
+              "leftValue": "={{ $('Config').item.json.BRAND_TEMPLATE_ID }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "b",
+              "leftValue": "={{ $('Config').item.json.BRAND_TEMPLATE_ID }}",
+              "rightValue": "SEU_BRAND_TEMPLATE_ID",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-canva-curso",
+      "name": "Tem Canva? (curso)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        120
+      ],
+      "notes": "Capas Canva são opcionais: só rodam se BRAND_TEMPLATE_ID estiver configurado."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "text",
+              "value": "={{ $('Aulai Salva Currículo').item.json.course.title }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "brandTemplateId",
+              "value": "={{ $('Config').item.json.BRAND_TEMPLATE_ID }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cover-curso-in",
+      "name": "Capa Curso (input)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1460,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "REPLACE_COM_ID_DO_WORKFLOW_03",
+        "options": {}
+      },
+      "id": "cover-curso",
+      "name": "Canva Cover (curso)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        1460,
+        200
+      ],
+      "notes": "Aponte para o workflow 03 (Canva Cover) após importar."
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Config').item.json.AULAI_URL }}/api/courses/{{ $('Config').item.json.courseId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ thumbnailUrl: $json.url }) }}",
+        "options": {}
+      },
+      "id": "patch-curso-thumb",
+      "name": "Aulai Capa Curso",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        200
+      ]
+    },
+    {
+      "parameters": {
         "fieldToSplitOut": "course.modules",
         "options": {}
       },
@@ -183,6 +290,111 @@
       "position": [
         1240,
         480
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a",
+              "leftValue": "={{ $('Config').item.json.BRAND_TEMPLATE_ID }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "b",
+              "leftValue": "={{ $('Config').item.json.BRAND_TEMPLATE_ID }}",
+              "rightValue": "SEU_BRAND_TEMPLATE_ID",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-canva-mod",
+      "name": "Tem Canva? (módulo)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "text",
+              "value": "={{ $('Split Módulos').item.json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "brandTemplateId",
+              "value": "={{ $('Config').item.json.BRAND_TEMPLATE_ID }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cover-mod-in",
+      "name": "Capa Módulo (input)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "REPLACE_COM_ID_DO_WORKFLOW_03",
+        "options": {}
+      },
+      "id": "cover-mod",
+      "name": "Canva Cover (módulo)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        1680,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Config').item.json.AULAI_URL }}/api/courses/{{ $('Config').item.json.courseId }}/modules/{{ $('Split Módulos').item.json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ thumbnailUrl: $json.url }) }}",
+        "options": {}
+      },
+      "id": "patch-mod-thumb",
+      "name": "Aulai Capa Módulo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1900,
+        380
       ]
     },
     {
@@ -302,7 +514,46 @@
       "main": [
         [
           {
+            "node": "Tem Canva? (curso)",
+            "type": "main",
+            "index": 0
+          },
+          {
             "node": "Split Módulos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem Canva? (curso)": {
+      "main": [
+        [
+          {
+            "node": "Capa Curso (input)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Capa Curso (input)": {
+      "main": [
+        [
+          {
+            "node": "Canva Cover (curso)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Canva Cover (curso)": {
+      "main": [
+        [
+          {
+            "node": "Aulai Capa Curso",
             "type": "main",
             "index": 0
           }
@@ -313,7 +564,46 @@
       "main": [
         [
           {
+            "node": "Tem Canva? (módulo)",
+            "type": "main",
+            "index": 0
+          },
+          {
             "node": "Split Aulas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem Canva? (módulo)": {
+      "main": [
+        [
+          {
+            "node": "Capa Módulo (input)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Capa Módulo (input)": {
+      "main": [
+        [
+          {
+            "node": "Canva Cover (módulo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Canva Cover (módulo)": {
+      "main": [
+        [
+          {
+            "node": "Aulai Capa Módulo",
             "type": "main",
             "index": 0
           }
