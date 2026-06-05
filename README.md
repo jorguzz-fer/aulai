@@ -45,6 +45,21 @@ npm run dev
 
 Login com `SEED_OWNER_EMAIL` / `SEED_OWNER_PASSWORD`.
 
+## Testar a esteira sem WhatsApp
+
+`scripts/test-intake.sh` simula as chamadas do Z-API/n8n (não precisa de celular):
+
+```bash
+# simula uma mensagem de texto chegando no n8n (phone == AUTHORIZED_PHONE do Config)
+N8N_INTAKE_URL=https://n8n.../webhook/aulai-intake AUTHORIZED_PHONE=55... \
+  ./scripts/test-intake.sh intake
+
+# outros: intake-image | intake-audio | api | producao
+```
+
+Para o gatilho real do WhatsApp, envie uma mensagem **de outro número** para o número
+conectado no Z-API (o número conectado é a "caixa de entrada"; `AUTHORIZED_PHONE` é quem pode pedir).
+
 ## API (auth dupla: `x-api-key` OU sessão)
 
 | Método | Rota | Uso |
