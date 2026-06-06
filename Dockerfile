@@ -24,6 +24,11 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./package.json
+# Scripts utilitários de ops (set-password, set-classos-key) — rodam com `tsx`.
+# Trazem também src/ porque set-classos-key importa src/lib/secrets.
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
 EXPOSE 3000
 # Migrations rodam no STARTUP, não no build.
 # Chama o CLI do Prisma direto pelo node (o standalone não copia node_modules/.bin,
