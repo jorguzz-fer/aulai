@@ -24,5 +24,7 @@ COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./package.json
 EXPOSE 3000
-# Migrations rodam no STARTUP, não no build
-CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+# Migrations rodam no STARTUP, não no build.
+# Chama o CLI do Prisma direto pelo node (o standalone não copia node_modules/.bin,
+# então `npx prisma` falha com "prisma: not found").
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node server.js"]
