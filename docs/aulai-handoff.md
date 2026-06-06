@@ -182,10 +182,14 @@ Copie o `clsk_…` e grave cifrado no `Client` do Aulai. **Nunca** cole o token 
 - [x] Deploy verde no Coolify (migrations aplicadas no startup, Next `Ready`).
 - [x] `node_modules` completo no runner (resolveu `prisma: not found` e `effect MODULE_NOT_FOUND`).
 - [x] `npm run db:seed` no container (Owner + Client "alumine" + curso demo).
+- [x] Login no painel funcionando.
+
+> ⚠️ **Gotcha de senha:** `$` em `SEED_OWNER_PASSWORD` é interpolado pelo Coolify/docker antes do
+> seed hashear, e o `upsert` do seed não atualiza senha de usuário existente. Para redefinir use
+> `scripts/set-password.ts` (lê do argv; use **aspas simples** no terminal). Prefira senhas sem `$`.
 
 ### Em aberto
 - [ ] Confirmar healthcheck verde (`Path=/api/health`, `Port=3000`, `Start Period=30`).
-- [ ] Login no painel com `SEED_OWNER_EMAIL` / `SEED_OWNER_PASSWORD`.
 - [ ] Atualizar nós **Config** do n8n com valores reais (AULAI_URL, telefones, avatar/voice, Z-API).
 - [ ] Registrar webhook global do HeyGen (§4).
 - [ ] Setar `OUTBOUND_WEBHOOK_URL` para o webhook do wf02.
