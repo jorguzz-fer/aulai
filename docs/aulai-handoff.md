@@ -178,12 +178,16 @@ Copie o `clsk_…` e grave cifrado no `Client` do Aulai. **Nunca** cole o token 
 
 ## 6. Pendências
 
-- [ ] Healthcheck: confirmar `Path=/api/health`, `Port=3000`, `Start Period=30` → Save.
-- [ ] Resolver `Exited` (ver Logs do boot).
-- [ ] Preencher todas as env vars (§3) e fazer deploy verde.
-- [ ] `npm run db:seed` no container.
+### Concluído ✅
+- [x] Deploy verde no Coolify (migrations aplicadas no startup, Next `Ready`).
+- [x] `node_modules` completo no runner (resolveu `prisma: not found` e `effect MODULE_NOT_FOUND`).
+- [x] `npm run db:seed` no container (Owner + Client "alumine" + curso demo).
+
+### Em aberto
+- [ ] Confirmar healthcheck verde (`Path=/api/health`, `Port=3000`, `Start Period=30`).
+- [ ] Login no painel com `SEED_OWNER_EMAIL` / `SEED_OWNER_PASSWORD`.
 - [ ] Atualizar nós **Config** do n8n com valores reais (AULAI_URL, telefones, avatar/voice, Z-API).
 - [ ] Registrar webhook global do HeyGen (§4).
 - [ ] Setar `OUTBOUND_WEBHOOK_URL` para o webhook do wf02.
-- [ ] **Rotacionar** a chave `clsk_…` da escola "alumine" que foi exposta em chat durante o setup,
-      e gravar a nova cifrada via `set-classos-key.ts`.
+- [ ] Gravar a chave do ClassOS da escola "alumine" cifrada via `set-classos-key.ts`.
+- [ ] **Rotacionar** a chave `clsk_…` que foi exposta em chat durante o setup.
