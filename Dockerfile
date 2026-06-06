@@ -18,9 +18,10 @@ ENV NODE_ENV=production
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+# node_modules completo do builder (com o client gerado + deps do CLI do Prisma,
+# ex.: @prisma/config -> effect). É superset do que o standalone traça, então o
+# server.js continua achando tudo, e o `prisma migrate deploy` tem suas deps.
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./package.json
 EXPOSE 3000
