@@ -104,7 +104,8 @@ vídeo fica pronto. O Aulai casa a aula por `video_id`/`callback_id`, marca `REA
 ## Publicação no ClassOS (REST API v1)
 
 `src/lib/publish/classos.ts` implementa `PublishTarget` contra o contrato real do ClassOS:
-`POST {CLASSOS_API_URL}/api/v1/courses` — **bulk e idempotente** por `(escola, sourceRef)`.
+`POST {CLASSOS_API_URL}/courses` (com `CLASSOS_API_URL` incluindo `/api/v1`, ex.:
+`https://app.classos.com/api/v1`) — **bulk e idempotente** por `(escola, sourceRef)`.
 O Aulai envia o **próprio id** como `sourceRef` em curso/módulo/aula (preserva o progresso dos
 alunos na republicação) e recebe `{ id, published }`.
 

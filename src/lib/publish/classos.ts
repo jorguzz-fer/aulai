@@ -3,12 +3,20 @@ import type { PublishTarget, PublishResult, CourseWithContent } from "./target";
 /**
  * Client da REST API v1 do ClassOS.
  *
- * Contrato: POST {CLASSOS_API_URL}/api/v1/courses
+ * Contrato: POST {CLASSOS_API_URL}/courses, onde CLASSOS_API_URL já inclui o
+ * prefixo /api/v1 (ex.: https://app.classos.com/api/v1).
  *   - Auth: header x-api-key (chave POR ESCOLA — resolve o tenant no ClassOS)
  *   - Bulk + idempotente por (organização, sourceRef)
  *   - sourceRef em todos os níveis preserva o progresso dos alunos na republicação
  *   - Resposta: { id, published }  (201 criado / 200 atualizado)
  */
+
+// Monta o endpoint /courses de forma tolerante: aceita CLASSOS_API_URL com ou
+// sem o sufixo /api/v1 (evita duplicar e gerar 404 em produção).
+function coursesEndpoint(baseUrl: string): string {
+  const base = baseUrl.replace(/\/+$/, "");
+  return /\/api\/v\d+$/.test(base) ? `${base}/courses` : `${base}/api/v1/courses`;
+}
 
 // Descrição do curso composta a partir dos metadados do Aulai (ClassOS tem um
 // único campo `description`; o Aulai guarda público/promessa/etc separados).
@@ -80,7 +88,7 @@ class ClassOSTarget implements PublishTarget {
       throw new Error("Chave do ClassOS ausente (Client.classOsApiKey ou CLASSOS_API_KEY)");
     }
 
-    const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/v1/courses`, {
+    const res = await fetch(coursesEndpoint(baseUrl), {
       method: "POST",
       headers: { "content-type": "application/json", "x-api-key": key },
       body: JSON.stringify(buildPayload(course)),
