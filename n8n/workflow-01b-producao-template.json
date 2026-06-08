@@ -1,0 +1,349 @@
+{
+  "name": "Aulai 01b — Produção via Template HeyGen (Claude + Template API)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "aulai-producao-template",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook Produção (Template)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "AULAI_URL",
+              "value": "https://aulai.classos.com.br",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "courseId",
+              "value": "={{ $json.body.courseId }}",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "brief",
+              "value": "={{ $json.body.brief }}",
+              "type": "object"
+            },
+            {
+              "id": "4",
+              "name": "HEYGEN_TEMPLATE_ID",
+              "value": "f684fdcc67c24930aa4a9b3cf6723817",
+              "type": "string"
+            },
+            {
+              "id": "5",
+              "name": "HEYGEN_AVATAR_ID",
+              "value": "7643e6a9a4164587880b04c470eefbcb",
+              "type": "string"
+            },
+            {
+              "id": "6",
+              "name": "HEYGEN_VOICE_ID",
+              "value": "00988b7d451d0722635ff7b2b9540a7b",
+              "type": "string"
+            },
+            {
+              "id": "7",
+              "name": "SYSTEM_PROMPT",
+              "value": "Você é um **designer instrucional sênior**. Sua função é transformar um briefing\nem um **curso completo, prático e didático**, pronto para ser produzido em vídeo e\npublicado. Você projeta a jornada de aprendizagem inteira: módulos, aulas,\nroteiros, exercícios e materiais de apoio.\n\n## Princípios pedagógicos (sempre)\n\n- **Progressão lógica:** do fundamento ao avançado; cada módulo prepara o próximo.\n- **Objetivo por aula no estilo Bloom:** comece o `objective` com um verbo de ação\n  (\"entender\", \"aplicar\", \"configurar\", \"produzir\", \"analisar\"). Um objetivo claro\n  e verificável por aula.\n- **Roteiro temporizado:** o `script` de cada aula deve ser um roteiro com blocos de\n  tempo, no estilo `0–3 min: ...; 3–9 min: ...; ...`, somando a duração da aula.\n  Escreva o conteúdo real de cada bloco, não um resumo genérico.\n- **Mão na massa:** toda aula termina com um `exercise` prático e específico, que o\n  aluno consegue fazer sozinho.\n- **Materiais de apoio reais:** em cada módulo, liste `supportMaterials` concretos\n  (checklists, planilhas, modelos, bancos de ideias) e `links` úteis e verdadeiros.\n- **Tom de voz:** respeite o tom pedido no briefing (ex.: direto, acolhedor,\n  técnico). Linguagem clara, sem jargão desnecessário, exemplos concretos.\n- **Promessa honesta:** a `promise` e o `expectedResult` devem ser realistas — sem\n  exagero nem garantia de resultado.\n\n## Conformidade — área médica / saúde (CFM 2.336/2023)\n\n**Se o curso for voltado a médicos, clínicas ou saúde**, aplique rigorosamente a\nResolução CFM nº 2.336/2023 em TODO o conteúdo gerado e descreva-a no campo\n`complianceNotes`:\n\n- **Identificação obrigatória:** nome, CRM + UF, RQE e no máximo **2** especialidades.\n- **Proibido:** prometer resultado, \"cura\", \"o mais moderno do mercado\",\n  sensacionalismo, autopromoção exagerada.\n- **Pacientes:** imagens só com **anonimato**; \"antes e depois\" apenas em caráter\n  educativo e dentro das regras.\n- **Equipamentos:** mencionar somente conforme aprovação da **ANVISA**.\n- **Pós-graduação lato sensu** exige a marcação **\"NÃO ESPECIALISTA\"**.\n- Reforce que as regras podem mudar e que o médico deve consultar o CRM regional.\n\nPara cursos fora da área de saúde, deixe `complianceNotes` vazio ou com observações\nde boas práticas pertinentes ao tema.\n\n## Formato de saída — APENAS JSON (sem markdown, sem comentários)\n\nResponda **exclusivamente** com um objeto JSON válido, exatamente neste formato:\n\n```\n{\n  \"subtitle\": \"subtítulo curto e atraente\",\n  \"audience\": \"para quem é o curso\",\n  \"promise\": \"o que o aluno consegue ao final (realista)\",\n  \"prerequisite\": \"pré-requisitos ou 'Nenhum'\",\n  \"expectedResult\": \"resultado esperado concreto\",\n  \"format\": \"ex.: 10 aulas de 15 min (~2h30)\",\n  \"complianceNotes\": \"regras de conformidade aplicáveis (CFM se saúde) ou ''\",\n  \"modules\": [\n    {\n      \"order\": 0,\n      \"title\": \"título do módulo\",\n      \"description\": \"o que o módulo cobre e por quê\",\n      \"supportMaterials\": \"lista de materiais de apoio, separados por ';'\",\n      \"links\": [{ \"label\": \"nome do link\", \"url\": \"https://...\" }],\n      \"lessons\": [\n        {\n          \"order\": 0,\n          \"title\": \"título da aula\",\n          \"durationMinutes\": 15,\n          \"objective\": \"verbo de ação + objetivo verificável\",\n          \"script\": \"0–3 min: ...; 3–9 min: ...; 9–13 min: ...; 13–15 min: ...\",\n          \"exercise\": \"tarefa prática específica para o aluno fazer\"\n        }\n      ]\n    }\n  ]\n}\n```\n\n### Regras do JSON\n\n- `order` começa em **0** e é sequencial em módulos e em aulas (dentro do módulo).\n- Respeite a quantidade de aulas e a duração pedidas no briefing; se não vierem,\n  use um padrão sensato (ex.: 8–12 aulas de 15 min).\n- `links` deve conter URLs reais e relevantes; se não tiver certeza de uma URL,\n  omita o link em vez de inventar.\n- Não inclua nenhum texto fora do objeto JSON.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "config",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        140,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'claude-opus-4-7', max_tokens: 8000, system: $('Config').item.json.SYSTEM_PROMPT, messages: [{ role: 'user', content: 'Crie o curso completo. Briefing: ' + JSON.stringify($('Config').item.json.brief) }] }) }}",
+        "options": {}
+      },
+      "id": "claude",
+      "name": "Claude Gera Currículo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        360,
+        380
+      ],
+      "notes": "Credencial: x-api-key = ANTHROPIC_API_KEY"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "curriculo",
+              "value": "={{ JSON.parse($json.content[0].text) }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extrai",
+      "name": "Extrai Currículo",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        580,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Config').item.json.AULAI_URL }}/api/courses/{{ $('Config').item.json.courseId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ subtitle: $json.curriculo.subtitle, audience: $json.curriculo.audience, promise: $json.curriculo.promise, prerequisite: $json.curriculo.prerequisite, expectedResult: $json.curriculo.expectedResult, format: $json.curriculo.format, complianceNotes: $json.curriculo.complianceNotes }) }}",
+        "options": {}
+      },
+      "id": "salva-meta",
+      "name": "Aulai Salva Metadados",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        380
+      ],
+      "notes": "Credencial: x-api-key = SERVICE_API_KEY"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').item.json.AULAI_URL }}/api/courses/{{ $('Config').item.json.courseId }}/curriculum",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ modules: $('Extrai Currículo').item.json.curriculo.modules }) }}",
+        "options": {}
+      },
+      "id": "salva-curriculo",
+      "name": "Aulai Salva Currículo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1020,
+        380
+      ],
+      "notes": "Resposta traz course.modules[].lessons[] com ids."
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "course.modules",
+        "options": {}
+      },
+      "id": "split-modulos",
+      "name": "Split Módulos",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1240,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "lessons",
+        "options": {}
+      },
+      "id": "split-aulas",
+      "name": "Split Aulas",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1460,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.heygen.com/v2/template/{{ $('Config').item.json.HEYGEN_TEMPLATE_ID }}/generate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ callback_id: $json.id, title: $json.title, dimension: { width: 1280, height: 720 }, variables: { aula_titulo: { name: 'aula_titulo', type: 'text', properties: { content: $json.title } }, narr_capa: { name: 'narr_capa', type: 'text', properties: { content: $json.script || $json.objective || $json.title } }, p1_bullets: { name: 'p1_bullets', type: 'text', properties: { content: $json.objective || $json.title } } } }) }}",
+        "options": {}
+      },
+      "id": "heygen",
+      "name": "HeyGen Template Submete",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        620
+      ],
+      "notes": "POST /v2/template/{id}/generate. callback_id = id da aula (casa no webhook). variables = só as DECLARADAS no template (hoje: aula_titulo, narr_capa, p1_bullets). content NÃO pode ser vazio (por isso os fallbacks). Resposta: data.video_id. Credencial: X-Api-Key = HEYGEN_API_KEY."
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Config').item.json.AULAI_URL }}/api/courses/{{ $('Config').item.json.courseId }}/lessons/{{ $('Split Aulas').item.json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ heygenRef: $json.data.video_id, videoStatus: 'RENDERING' }) }}",
+        "options": {}
+      },
+      "id": "patch-rendering",
+      "name": "Aulai Marca Rendering",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1900,
+        620
+      ],
+      "notes": "Fim do workflow. O resto acontece quando o HeyGen chamar o webhook do Aulai (vídeo pronto → READY → quando todas prontas, curso vai p/ AGUARDANDO_APROVACAO e dispara WhatsApp)."
+    }
+  ],
+  "connections": {
+    "Webhook Produção (Template)": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Claude Gera Currículo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Gera Currículo": {
+      "main": [
+        [
+          {
+            "node": "Extrai Currículo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrai Currículo": {
+      "main": [
+        [
+          {
+            "node": "Aulai Salva Metadados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aulai Salva Metadados": {
+      "main": [
+        [
+          {
+            "node": "Aulai Salva Currículo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aulai Salva Currículo": {
+      "main": [
+        [
+          {
+            "node": "Split Módulos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Módulos": {
+      "main": [
+        [
+          {
+            "node": "Split Aulas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Aulas": {
+      "main": [
+        [
+          {
+            "node": "HeyGen Template Submete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HeyGen Template Submete": {
+      "main": [
+        [
+          {
+            "node": "Aulai Marca Rendering",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -25,6 +25,15 @@ const targets = [
     promptFile: "system-curriculo.md",
   },
   {
+    // wf01b (template HeyGen) usa o prompt padrão por enquanto — o MVP mapeia
+    // as variáveis a partir de title/script/objective. Quando o template tiver
+    // todas as variáveis, trocar para system-curriculo-template.md.
+    workflow: "workflow-01b-producao-template.json",
+    configNode: "Config",
+    assignment: "SYSTEM_PROMPT",
+    promptFile: "system-curriculo.md",
+  },
+  {
     workflow: "workflow-00-whatsapp-intake.json",
     configNode: "Config",
     assignment: "INTAKE_PROMPT",
